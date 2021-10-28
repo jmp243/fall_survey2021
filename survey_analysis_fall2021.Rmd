@@ -1,0 +1,260 @@
+---
+title: "Survey_analysis"
+author: "Jung Mee Park"
+date: "10/21/2021"
+output: html_document
+---
+### the above is a yml stub. 
+### https://www.markdownguide.org/cheat-sheet/
+
+## Purpose
+The purpose of this report is to overview the data for **Fall 2021 survey**. 
+
+You can create lists in R markdown. 
+unordered: 
+* redo markdown
+* do a violin plot
+
+ordered: 
+1. load [data](url here)
+2. clean data in time series
+3. make plot
+
+#High Level Analysis Plan:
+1.     Generate straight frequencies and percentages for each question and response
+2.     Break down responses by
+a.     Respondent college (if ns are big enough) (Primary_Department__r.Name)
+ i.     If that is too fine grained, use Parent_Organization__c
+b.     By products used (counter.Scheduling/Notes, counter. Service Desk, counter.Events, Counter.Marketing – SF)
+ i.     If per product is too fine grained, try Profile.Name
+c.     By time using Trellis
+ i.     Break into chunks based on user creation date (CreatedDate)
+1.     <1 month
+2.     1-6 months
+3.     6 months to a year
+4.     1 year+
+3.     Compare the invited list to respondents on the above criteria to see if there is better respondent representation across some groups.
+
+# literate programming approach like a Jupyter Notebook. 
+Rmarkdown automatically creates reports. 
+You can automatically update your Rmarkdown when data is updated. 
+# where did they stop off with the survey
+Use the Progress variable
+
+mean time in seconds for incomplete surveys is 16056.78.
+mean time in seconds for completed surveys is 28547.17.
+
+```{r, message=FALSE}
+library(readxl)
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+library(magrittr)
+library(tidyr)
+library(forcats)
+library(lubridate)
+library(dplyr)
+library(knitr)
+library(lattice)
+library(likert)
+library(MASS)
+library(psych)
+library(viridis)
+library(here)
+library(flextable)
+library(devtools)
+```
+
+
+quantiles
+```{r}
+quant_time <- tapply(fall_survey$Duration..in.seconds., fall_survey$Finished, quantile)
+quant_time
+```
+or just the summary 
+```{r}
+# sum_time <- tapply(fall_survey$Duration..in.seconds., fall_survey$Finished, summary)
+# sum_time
+```
+
+# completed surveys
+There were 239 surveys returned and 198 were completed. 
+
+# creating date intervals
+2021-10-01 was when the last survey was turned in 
+
+Respondent college 
+```{r}
+# overview_pct1 <- fall_survey %>% 
+#   group_by(Parent_Organization__c) %>% 
+#   summarize(count = n()) %>%  # count records by species
+#   mutate(pct = count/sum(count))
+# 
+# pct_graph1 <- 
+#   ggplot(overview_pct1, aes(Parent_Organization__c, 
+#                            count, fill = Parent_Organization__c)) +
+#   geom_bar(stat='identity') +
+#   labs(x = "Units", y = "Respondents") +
+#   coord_flip() +
+#   theme(legend.position="none") +
+#   geom_text(aes(label = scales::percent(pct), y = if_else(count > 0.1*max(count), count/2, count+ 0.05*max(count))))
+# 
+# pct_graph1 <- pct_graph1 + labs(title = "Respondents across parent organizations", 
+#                               subtitle = "full data",  fill = "Department Name")
+# 
+# print(pct_graph1)
+
+```
+easier as a table
+```{r}
+#
+```
+
+
+```{r}
+# table(fall_survey$Parent_Organization__c)
+```
+
+
+```{r}
+```
+For question 3 
+```{r}
+q3_plot <- plot(likert(fall_survey[,18:21]), ordered = F, wrap= 40) # this looks good. but add more to it.
+q3_plot <- q3_plot + labs(title = "Interactions with Trellis staff",
+                          subtitle = "Question 3 - full data")
+
+print(q3_plot)
+
+```
+question 4 graph
+```{r}
+Q4graph <- fall_survey %>%
+  group_by(Profile.Name) %>% 
+  # mutate(Q4 = fct_infreq(Q4)) %>%
+  drop_na(Q4) %>% 
+  ggplot(aes(x = factor(Q4)), y = ..count.., fill = Profile.Name) +
+  geom_bar(aes(fill = Profile.Name)) +
+  coord_flip() +
+  labs(x = "", y = "responses")
+
+Q4graph <- Q4graph + labs(title = "How satisfied were you with your initial training in Trellis?",
+                          subtitle = "Question 4 based on profile name", fill = "Profile Name")
+
+print(Q4graph)
+```
+
+Question 6 
+```{r}
+q6_plot <- plot(likert(fall_survey[,23:25]), ordered = T, wrap= 40) # this looks good. but add more to it. 
+
+q6_plot <- q6_plot + labs(title = "Suport for and knowledge of Trellis",
+                            subtitle = "Question 6 - full data") 
+
+print(q6_plot)
+```
+
+Question 7 
+```{r}
+Q7_pct <- long_Q7 %>% 
+  group_by(response) %>%
+  summarize(count = n()) %>%  # count records by species
+  mutate(pct = count/sum(count))
+
+table(long_Q7$response)
+```
+
+graph of Q7 
+```{r}
+Q7graph <- 
+  ggplot(Q7_pct, aes(response,count, fill = response)) +
+  geom_bar(stat='identity') +
+  labs(x = "", y = "") +
+  # coord_flip() +
+  theme(legend.position="none") +
+  geom_text(aes(label = scales::percent(pct), y = if_else(count > 0.1*max(count), count/2, count+ 0.05*max(count))))
+
+Q7graph <- Q7graph + labs(title = "Which of these tools do you use to get help with Trellis?",
+                          subtitle = "Question 7 - full data") + 
+                          theme(legend.position="none")
+
+print(Q7graph)
+
+```
+question 9 
+```{r}
+q9_plot <- plot(likert(fall_survey[,32:35]), ordered = F, wrap= 40) # this looks good. but add more to it. 
+q9_plot <- q9_plot + labs(title = "Ease of Trellis",
+                            subtitle = "Question 9 - full data") 
+
+print(q9_plot)
+```
+question 11
+```{r}
+q11_plot <- plot(likert(fall_survey[,36:38]), ordered = F, wrap= 40) # this looks good. but add more to it. 
+q11_plot <- q11_plot + labs(title = "Benefits of Trellis",
+                          subtitle = "Question 11 - full data") 
+
+print(q11_plot)
+```
+There are really only 3 user groups. Most are in the over 1 year of use category. So you expect some flexibility. 
+
+re-evaluate some stuff like q4 and q7
+
+Question 7 with period
+```{r}
+Q7graph <- fall_survey %>% 
+  # group_by(period) %>% 
+  pivot_longer(Q7_1:Q7_6, names_to = "question", values_to = "response", 
+               values_drop_na = TRUE) %>%
+  ggplot(aes(x = response, fill = period)) +
+  geom_bar(aes(fill = period)) +
+  coord_flip()+
+  # geom_text(stat="count", aes(label=..count..), vjust=1, hjust=1) +
+  # # geom_text(stat='count', aes(label = ..count..), position = position_stack(vjust = 0.5)) +
+  # geom_boxplot() +
+  labs(x = "response", y = "number of respondents") 
+  # theme(legend.position=element_blank())
+  # geom_text(aes(label = scales::percent(pct), y = if_else(count > 0.1*max(count), count/2, count+ 0.05*max(count))))
+
+
+Q7graph <- Q7graph + labs(title = "Which of these tools do you use to get help with Trellis?",
+                          subtitle = "Question 7 - full data", fill = "User Created Date") + 
+                          scale_fill_brewer(palette = "Dark2")
+
+print(Q7graph)
+
+```
+breakdown of profile name and time period 
+```{r}
+## breakdown of user created date and profile name
+user_graph <- fall_survey %>%
+  group_by(Profile.Name) %>% 
+  drop_na(period) %>% 
+  ggplot(aes(x = period, y = ..count.., fill = Profile.Name)) +
+  geom_bar(aes(fill = Profile.Name)) +
+  # coord_flip() +
+  labs(x = "", y = "responses")
+
+user_graph <- user_graph + labs(title = "Breakdown of users based on experience",
+                          subtitle = "full data", fill = "Profile Name")
+
+print(user_graph)
+
+```
+
+Who dropped out of the survey? 
+```{r}
+fall_survey$Progress_factor <- as.factor(fall_survey$Progress)
+
+table(fall_survey$Progress_factor)
+```
+
+31 left after just filling out their name and did not answer any questions. 
+1 left after Q3_2
+8 left after Q4
+1 left after Q9_4
+198 was full complete
+
+
+As for counter events there were 12 for events, 43 for marketing, 185 for scheduling notes, and 65 for service desk.
