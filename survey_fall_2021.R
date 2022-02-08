@@ -16,6 +16,7 @@ head(fall_survey)
 sum(is.na(fall_survey$Q3_4))
 
 colSums(is.na(fall_survey)) # for all data
+
 # load in libraries
 library(readxl)
 library(dplyr)
@@ -38,6 +39,11 @@ library(devtools)
 # library(userfriendlyscience)
 # managing dates
 # original format mm/dd/yy hh:mm date format in R
+
+# MCM tutorial
+storms %>% 
+  mutate(across(.cols = everything(), is.na)) %>% 
+  
 
 # convert Recorded Date 
 head(fall_survey$RecordedDate)
