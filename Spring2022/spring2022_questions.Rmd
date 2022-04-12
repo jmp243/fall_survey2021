@@ -1,0 +1,16 @@
+---
+title: "spring2022_survey"
+author: "Jung Mee Park"
+date: "4/12/2022"
+output: html_document
+---
+```{r}
+getwd()
+setwd("~/Documents/Trellis/Survey/Spring2022")
+
+questions <- read.csv("spring2022_survey_questions.csv", header = T)
+transposed_qu <- t(questions)
+print(transposed_qu)
+
+```
+
