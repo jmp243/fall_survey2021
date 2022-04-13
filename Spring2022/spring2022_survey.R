@@ -5,7 +5,7 @@
 # 2022-04-12
 
 getwd()
-setwd("~/Documents/Trellis/Survey/Spring2022")
+setwd("~/Documents/Trellis/Survey/Fall2021/Spring2022")
 
 # read in questions
 questions <- read.csv("spring2022_survey_questions.csv", header = T)
@@ -88,6 +88,10 @@ April12_2$Q4 = factor(April12_2$Q4,
                         ordered = TRUE,
                         levels = c("Extremely dissatisfied", "Somewhat dissatisfied", "Neither satisfied nor dissatisfied", 
                                    "Somewhat satisfied", "Extremely satisfied"))
+
+# recode advising base
+April12_2$Profile.Name[April12_2$Profile.Name=="advising base"] <- "Advising Base"
+
 # rename questions for Q3
 names(April12_2)[names(April12_2)=="Q3_1"] <- "Q3_1 My interaction with the Trellis team has been positive."
 names(April12_2)[names(April12_2)=="Q3_2"] <- "Q3_2 My interactions with the Trellis team have been informative."
@@ -102,15 +106,28 @@ q3_plot <- q3_plot + labs(title = "Interactions with Trellis staff",
 q3_plot
 
 # LIKERT for q4
-# Q4graph <- April12_2 %>%
-#   # mutate(Q4 = fct_infreq(Q4)) %>%
-#   drop_na(Q4) %>%
-#   ggplot(aes(x = factor(Q4)), count) +
-#   geom_bar(fill = "blue") +
-#   # coord_flip() +
-#   labs(x = "", y = "responses")
+q4_plot <- plot(likert(April12_2[,22, drop=FALSE]), ordered = F, wrap= 40) # this looks good. but add more to it. 
+q4_plot <- q4_plot + labs(title = "Initial Training",
+                          subtitle = "Question 4 - full data") 
+q4_plot
 
 ## fill response with another variable like Profile.Name
+library(scales)
+
+
+April12_2%>%
+  # count how often each class occurs in each sample.
+  count(Profile.Name,Q4)%>% 
+  group_by(Q4)%>%
+  drop_na(Q4) %>% 
+  mutate(Percent = n /sum(n))%>%
+  ggplot(aes(x = Q4, y = Percent, fill = Profile.Name)) + 
+  coord_flip() +
+  geom_col(width=0.7)+
+  geom_text(aes(label = paste0(round(Percent * 100), '%')),
+            position = position_stack(vjust = 0.5))
+
+
 Q4graph <- April12_2 %>%
   group_by(Profile.Name) %>% 
   # mutate(Q4 = fct_infreq(Q4)) %>%
@@ -125,6 +142,20 @@ Q4graph <- Q4graph + labs(title = "How satisfied were you with your initial trai
 
 print(Q4graph)
 
+# perhaps an overly complicated stacked count graph with percentages
+April12_2%>%
+  # count how often each class occurs in each sample.
+  count(Profile.Name,Q4)%>%
+  group_by(Q4)%>%
+  drop_na(Q4) %>%
+  mutate(Percent = n /sum(n))%>%
+  ggplot(aes(x = Q4, y = n, fill = Profile.Name)) +
+  geom_bar(aes(fill = Profile.Name), stat = "identity") +
+  geom_col(width=0.7)+
+  geom_text(aes(label = paste0(round(Percent * 100), '%')),
+            position = position_stack(vjust = 0.5))
+
+
 ## LIKERT for q6 
 names(April12_2)[names(April12_2)=="Q6_1"] <- "Q6_1 I understand what resources are available to support my use of Trellis."
 names(April12_2)[names(April12_2)=="Q6_2"] <- "Q6_2 I continue to feel supported in my use of Trellis."
@@ -138,14 +169,80 @@ print(q6_plot)
 
 ## Q7 - two part analysis 
 
-## Q8
+# relocate columns 
+# iris <- iris %>% relocate(Species, .before = Sepal.Length)
+April12_2 <- April12_2 %>% 
+  relocate(Q7.2_1, .after = Q7.1_1)
+
+April12_2 <- April12_2 %>% 
+  relocate(Q7.2_2, .after = Q7.1_2)
+
+April12_2 <- April12_2 %>% 
+  relocate(Q7.2_3, .after = Q7.1_3)
+
+April12_2 <- April12_2 %>% 
+  relocate(Q7.2_4, .after = Q7.1_4)
+
+April12_2 <- April12_2 %>% 
+  relocate(Q7.2_5, .after = Q7.1_5)
+
+April12_2 <- April12_2 %>% 
+  relocate(Q7.2_6, .after = Q7.1_6)
+
+# pairwise results don't make a ton of sense
+
+# rename the questions
+names(April12_2)[names(April12_2)=="Q7.1_1"] <- "Q7.1_1 Aware of Release notes"
+names(April12_2)[names(April12_2)=="Q7.1_2"] <- "Q7.1_2 Aware of Bi weekly live demonstrations (i.e. Sprint demos)"
+names(April12_2)[names(April12_2)=="Q7.1_3"] <- "Q7.1_3 Aware of Communities of practice (i.e. Trellis user groups)"
+names(April12_2)[names(April12_2)=="Q7.1_4"] <- "Q7.1_4 Aware of Monthly information sessions"
+names(April12_2)[names(April12_2)=="Q7.1_5"] <- "Q7.1_5 Aware of Newsletter/Digest"
+names(April12_2)[names(April12_2)=="Q7.1_6"] <- "Q7.1_6 Aware of None of these"
+names(April12_2)[names(April12_2)=="Q7.2_1"] <- "Q7.2_1 Have used Release notes"
+names(April12_2)[names(April12_2)=="Q7.2_2"] <- "Q7.2_2 Have attended Bi weekly live demonstrations (i.e. Sprint demos)"
+names(April12_2)[names(April12_2)=="Q7.2_3"] <- "Q7.2_3 Have used Communities of practice (i.e. Trellis user groups)"
+names(April12_2)[names(April12_2)=="Q7.2_4"] <- "Q7.2_4 Have attended Monthly information sessions"
+names(April12_2)[names(April12_2)=="Q7.2_5"] <- "Q7.2_5 Have used Newsletter/Digest"
+names(April12_2)[names(April12_2)=="Q7.2_6"] <- "Q7.2_6 Have attended None of these"
+
+# release notes columns 26, 27
 April12_2 %>% 
+  # count how often each class occurs in each sample.
+  count(`Q7.1_1 Aware of Release notes`, `Q7.2_1 Have used Release notes`)%>% 
+  drop_na() %>% 
+  mutate(pct = n /sum(n)) 
+# %>%
+#   geom_boxplot()
+#   geom_text(aes(label = paste0(round(pct * 100), '%')),
+#             position = position_stack(vjust = 0.5))
+
   
+# load library
+  library(ggplot2)
+  library(tidyr)
+  library(ggthemes)
+  library(reshape2)
+
+# reorganize data
+Release_notes <- April12_2 %>% 
+  gather(key="question", value="response", 26:27) 
+
+ggplot(data = Release_notes, aes(x = question, y = response)) + 
+  geom_boxplot()
+
+
+  
+## Q8
+April12_2$Q8[April12_2$Q8==""] <- NA
+
+sum(is.na(April12_2$Q8)) 
+
 # disperse answers into long, currently comma separated
 library(stringr)
 April12_2[c('Q8_val1', 'Q8_val2', 'Q8_val3', 'Q8_val4', 'Q8_val5', 'Q8_val6')] <- str_split_fixed(April12_2$Q8, ',', 6)
 # April12_3 <- April12_2 %>% separate(Q8, c('Q8_val1', 'Q8_val2', 'Q8_val3', 'Q8_val4', 'Q8_val5', 'Q8_val6'))
-Q8graph <- April12_2[,69:74]
+Q8graph <- April12_2[,69:74] # these are the columns of created Q8_val1 through 6
+
 # pivot the table longer
 long_Q8 <- Q8graph %>% 
   pivot_longer(everything(), names_to = "question", values_to = "response", values_drop_na = TRUE)
@@ -176,5 +273,9 @@ Q8graph <- Q8graph + labs(title = "Which of these tools do you use to get help w
   theme(legend.position="none")
 
 print(Q8graph)
+
+# Likert Q10
+
+# Likert Q12
 
 
