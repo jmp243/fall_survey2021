@@ -275,7 +275,24 @@ Q8graph <- Q8graph + labs(title = "Which of these tools do you use to get help w
 print(Q8graph)
 
 # Likert Q10
+# rename questions for Q10
+names(April12_2)[names(April12_2)=="Q10_1"] <- "Q10_1 I feel comfortable using Trellis."
+names(April12_2)[names(April12_2)=="Q10_2"] <- "Q10_2 Trellis makes it easy for me to access the information I need to do my job."
+
+# LIKERT for q10
+q10_plot <- plot(likert(April12_2[,39:40]), ordered = F, wrap= 40) # this looks good. but add more to it. 
+q10_plot <- q10_plot + labs(title = "Ease of Use",
+                          subtitle = "Question 10 - full data") 
+q10_plot
 
 # Likert Q12
+# rename questions for Q12
+names(April12_2)[names(April12_2)=="Q12_1"] <- "Q12_1 I believe access to the Trellis data allows me to provide better service."
+names(April12_2)[names(April12_2)=="Q12_2"] <- "Q12_2 I would recommend Trellis capabilities to someone else."
 
+# LIKERT for q10
+q12_plot <- plot(likert(April12_2[,41:42]), ordered = F, wrap= 40) # this looks good. but add more to it. 
+q12_plot <- q12_plot + labs(title = "Value of Trellis",
+                            subtitle = "Question 12 - full data") 
+q12_plot
 
