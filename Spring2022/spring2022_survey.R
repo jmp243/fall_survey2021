@@ -4,6 +4,10 @@
 # transpose questions
 # 2022-04-12
 
+# clear all 
+rm(list=ls(all=TRUE)) 
+
+# get wd
 getwd()
 setwd("~/Documents/Trellis/Survey/Fall2021/Spring2022")
 
@@ -106,8 +110,10 @@ q3_plot <- q3_plot + labs(title = "Interactions with Trellis staff",
 q3_plot
 
 # LIKERT for q4
+# names(April12_2)[names(April12_2)=="Q4"] <- "Q4 How satisfied were you with your initial training in Trellis?"
+
 q4_plot <- plot(likert(April12_2[,22, drop=FALSE]), ordered = F, wrap= 40) # this looks good. but add more to it. 
-q4_plot <- q4_plot + labs(title = "Initial Training",
+q4_plot <- q4_plot + labs(title = "How satisfied were you with your initial training in Trellis?",
                           subtitle = "Question 4 - full data") 
 q4_plot
 
@@ -117,7 +123,7 @@ library(scales)
 
 April12_2%>%
   # count how often each class occurs in each sample.
-  count(Profile.Name,Q4)%>% 
+  count(Profile.Name, Q4)%>% 
   group_by(Q4)%>%
   drop_na(Q4) %>% 
   mutate(Percent = n /sum(n))%>%
@@ -170,7 +176,6 @@ print(q6_plot)
 ## Q7 - two part analysis 
 
 # relocate columns 
-# iris <- iris %>% relocate(Species, .before = Sepal.Length)
 April12_2 <- April12_2 %>% 
   relocate(Q7.2_1, .after = Q7.1_1)
 
@@ -208,30 +213,244 @@ names(April12_2)[names(April12_2)=="Q7.2_6"] <- "Q7.2_6 Have attended None of th
 # release notes columns 26, 27
 April12_2 %>% 
   # count how often each class occurs in each sample.
-  count(`Q7.1_1 Aware of Release notes`, `Q7.2_1 Have used Release notes`)%>% 
+  count(`Q7.1_1 Aware of Release notes`, `Q7.2_1 Have used Release notes`)%>%
+  # count(`Q7.1_1`, `Q7.2_1`)%>% 
   drop_na() %>% 
   mutate(pct = n /sum(n)) 
 # %>%
 #   geom_boxplot()
 #   geom_text(aes(label = paste0(round(pct * 100), '%')),
 #             position = position_stack(vjust = 0.5))
-
+April12_2 <- April12_2 %>% 
+  mutate(Q7.1_1_modified = ifelse(`Q7.2_1 Have used Release notes` == "I have used/attended.",
+                                  "I am aware.", 
+                                  `Q7.1_1 Aware of Release notes`))
   
 # load library
-  library(ggplot2)
-  library(tidyr)
-  library(ggthemes)
-  library(reshape2)
+library(ggplot2)
+library(tidyr)
+library(ggthemes)
+library(reshape2)
+library(RColorBrewer)
 
 # reorganize data
-Release_notes <- April12_2 %>% 
-  gather(key="question", value="response", 26:27) 
+# product_longer <- MC_s_c_u %>% 
+#   pivot_longer(cols = c(Profile.Name.x, Profile.Name.y, Product),
+#                names_to = "col_name", 
+#                values_to = "MC-Social-SFProduct") %>% 
+#   drop_na("MC-Social-SFProduct") %>% 
+#   distinct()
 
-ggplot(data = Release_notes, aes(x = question, y = response)) + 
-  geom_boxplot()
+Q7_1 <- April12_2 %>% 
+  pivot_longer(cols = c(Q7.1_1_modified, `Q7.2_1 Have used Release notes`),
+               names_to = "col_name", 
+               values_to = "Release_Notes") %>% 
+  drop_na("Release_Notes") %>% 
+  distinct() 
+
+Q7_1 %>% 
+  count(Release_Notes) 
+
+# Q7_1[Q7_1==""] <- NA
+
+Q7_1 %>% 
+  filter(Release_Notes != "") %>% 
+  ggplot(aes(factor(Release_Notes))) +
+  # drop_na() +
+  geom_bar(stat="count", position = "dodge") + 
+  scale_fill_brewer(palette = "Set1")
+
+# facet wrap by column. All questions in 1, all questions in the other. 
+# Q7 part 2 sprint demos
+April12_2 %>% 
+  # count how often each class occurs in each sample.
+  count(`Q7.1_2 Aware of Bi weekly live demonstrations (i.e. Sprint demos)`, `Q7.2_2 Have attended Bi weekly live demonstrations (i.e. Sprint demos)`)%>%
+  drop_na() %>% 
+  mutate(pct = n /sum(n)) 
+
+April12_2 <- April12_2 %>% 
+  mutate(Q7.1_2_modified = ifelse(`Q7.2_2 Have attended Bi weekly live demonstrations (i.e. Sprint demos)` == "I have used/attended.",
+                                  "I am aware.", 
+                                  `Q7.1_2 Aware of Bi weekly live demonstrations (i.e. Sprint demos)`))
+Q7_2 <- April12_2 %>% 
+  pivot_longer(cols = c(Q7.1_2_modified, `Q7.2_2 Have attended Bi weekly live demonstrations (i.e. Sprint demos)`),
+               names_to = "col_name_demos", 
+               values_to = "sprint_demos") %>% 
+  drop_na("sprint_demos") %>% 
+  distinct() 
 
 
-  
+Q7_2 %>% 
+  count(sprint_demos) 
+
+Q7_2 %>% 
+  filter(sprint_demos != "") %>% 
+  ggplot(aes(factor(sprint_demos))) +
+  geom_bar(stat="count", position = "dodge") + 
+  scale_fill_brewer(palette = "Set1")
+
+
+# Q7 part 3 Trellis user groups
+April12_2 %>% 
+  # count how often each class occurs in each sample.
+  count(`Q7.1_3 Aware of Communities of practice (i.e. Trellis user groups)`, `Q7.2_3 Have used Communities of practice (i.e. Trellis user groups)`)%>%
+  drop_na() %>% 
+  mutate(pct = n /sum(n)) 
+
+April12_2 <- April12_2 %>% 
+  mutate(Q7.1_3_modified = ifelse(`Q7.2_3 Have used Communities of practice (i.e. Trellis user groups)` == "I have used/attended.",
+                                  "I am aware.", 
+                                  `Q7.1_3 Aware of Communities of practice (i.e. Trellis user groups)`))
+Q7_3 <- April12_2 %>% 
+  pivot_longer(cols = c(Q7.1_3_modified, `Q7.2_3 Have used Communities of practice (i.e. Trellis user groups)`),
+               names_to = "col_name_user", 
+               values_to = "user_groups") %>% 
+  drop_na("user_groups") %>% 
+  distinct() 
+
+
+Q7_3 %>% 
+  count(user_groups) 
+
+Q7_3 %>% 
+  filter(user_groups != "") %>% 
+  ggplot(aes(factor(user_groups))) +
+  geom_bar(stat="count", position = "dodge") + 
+  scale_fill_brewer(palette = "Set1")
+
+# Q7 part 4 Monthly information sessions
+April12_2 %>% 
+  # count how often each class occurs in each sample.
+  count(`Q7.1_4 Aware of Monthly information sessions`, `Q7.2_4 Have attended Monthly information sessions`)%>%
+  drop_na() %>% 
+  mutate(pct = n /sum(n)) 
+
+April12_2 <- April12_2 %>% 
+  mutate(Q7.1_4_modified = ifelse(`Q7.2_4 Have attended Monthly information sessions` == "I have used/attended.",
+                                  "I am aware.", 
+                                  `Q7.1_4 Aware of Monthly information sessions`))
+Q7_4 <- April12_2 %>% 
+  pivot_longer(cols = c(Q7.1_4_modified, `Q7.2_4 Have attended Monthly information sessions`),
+               names_to = "col_name_monthly", 
+               values_to = "monthly") %>% 
+  drop_na("monthly") %>% 
+  distinct() 
+
+
+Q7_4 %>% 
+  count(monthly) 
+
+Q7_4 %>% 
+  filter(monthly != "") %>% 
+  ggplot(aes(factor(monthly))) +
+  geom_bar(stat="count", position = "dodge") + 
+  scale_fill_brewer(palette = "Set1")
+
+# Q7 part 5 Newsletter
+April12_2 %>% 
+  # count how often each class occurs in each sample.
+  count(`Q7.1_5 Aware of Newsletter/Digest`, `Q7.2_5 Have used Newsletter/Digest`)%>%
+  drop_na() %>% 
+  mutate(pct = n /sum(n)) 
+
+April12_2 <- April12_2 %>% 
+  mutate(Q7.1_5_modified = ifelse(`Q7.2_5 Have used Newsletter/Digest` == "I have used/attended.",
+                                  "I am aware.", 
+                                  `Q7.1_5 Aware of Newsletter/Digest`))
+Q7_5 <- April12_2 %>% 
+  pivot_longer(cols = c(Q7.1_5_modified, `Q7.2_5 Have used Newsletter/Digest`),
+               names_to = "col_name_newsletter", 
+               values_to = "newsletter") %>% 
+  drop_na("newsletter") %>% 
+  distinct() 
+
+
+Q7_5 %>% 
+  count(newsletter) 
+
+Q7_5 %>% 
+  filter(newsletter != "") %>% 
+  ggplot(aes(factor(newsletter))) +
+  geom_bar(stat="count", position = "dodge") + 
+  scale_fill_brewer(palette = "Set1")
+
+# Q7 part 6 none
+April12_2 %>% 
+  # count how often each class occurs in each sample.
+  count(`Q7.1_6 Aware of None of these`, `Q7.2_6 Have attended None of these`)%>%
+  drop_na() %>% 
+  mutate(pct = n /sum(n)) 
+
+April12_2 <- April12_2 %>% 
+  mutate(Q7.1_6_modified = ifelse(`Q7.2_6 Have attended None of these` == "I have used/attended.",
+                                  "I am aware.", 
+                                  `Q7.1_6 Aware of None of these`))
+Q7_6 <- April12_2 %>% 
+  pivot_longer(cols = c(Q7.1_6_modified, `Q7.2_6 Have attended None of these`),
+               names_to = "col_name_none", 
+               values_to = "none") %>% 
+  drop_na("none") %>% 
+  distinct() 
+
+ 
+Q7_6 %>% 
+  count(none) 
+
+Q7_6 %>% 
+  filter(none != "") %>% 
+  ggplot(aes(factor(none))) +
+  geom_bar(stat="count", position = "dodge") + 
+  scale_fill_brewer(palette = "Set1")
+
+# q7 new data.frame
+Q7 <- April12_2 %>% 
+  pivot_longer(cols = c(Q7.1_1_modified, `Q7.2_1 Have used Release notes`),
+               names_to = "col_name", 
+               values_to = "Release_Notes") %>% 
+  drop_na("Release_Notes") %>% 
+  distinct() 
+
+Q7 <- April12_2 %>% 
+  pivot_longer(cols = c(Q7.1_2_modified, `Q7.2_2 Have attended Bi weekly live demonstrations (i.e. Sprint demos)`),
+               names_to = "col_name_demos", 
+               values_to = "sprint_demos") %>% 
+  drop_na("sprint_demos") %>% 
+  distinct() 
+
+Q7 <- April12_2 %>% 
+  pivot_longer(cols = c(Q7.1_3_modified, `Q7.2_3 Have used Communities of practice (i.e. Trellis user groups)`),
+               names_to = "col_name_user", 
+               values_to = "user_groups") %>% 
+  drop_na("user_groups") %>% 
+  distinct() 
+
+Q7<- April12_2 %>% 
+  pivot_longer(cols = c(Q7.1_4_modified, `Q7.2_4 Have attended Monthly information sessions`),
+               names_to = "col_name_monthly", 
+               values_to = "monthly") %>% 
+  drop_na("monthly") %>% 
+  distinct() 
+Q7 <- April12_2 %>% 
+  pivot_longer(cols = c(Q7.1_5_modified, `Q7.2_5 Have used Newsletter/Digest`),
+               names_to = "col_name_newsletter", 
+               values_to = "newsletter") %>% 
+  drop_na("newsletter") %>% 
+  distinct() 
+Q7 <- April12_2 %>% 
+  pivot_longer(cols = c(Q7.1_6_modified, `Q7.2_6 Have attended None of these`),
+               names_to = "col_name_none", 
+               values_to = "none") %>% 
+  drop_na("none") %>% 
+  distinct()
+
+data %>% 
+  mutate(q1_mod = ifelse...) %>% 
+  select(-q1) %>% 
+  pivot_longer(cols = everything(), names_to = "question", values_to = "answer") %>% 
+  ggplot(aes(x = answer)) + 
+  geom_bar() + 
+  facet_wrap(vars(question), scales = "free_x") # scales = "free" 
+
 ## Q8
 April12_2$Q8[April12_2$Q8==""] <- NA
 
