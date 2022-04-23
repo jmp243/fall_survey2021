@@ -243,19 +243,19 @@ library(RColorBrewer)
 
 Q7_1 <- April12_2 %>% 
   pivot_longer(cols = c(Q7.1_1_modified, `Q7.2_1 Have used Release notes`),
-               names_to = "col_name", 
-               values_to = "Release_Notes") %>% 
-  drop_na("Release_Notes") %>% 
+               names_to = "col_name_release", 
+               values_to = "release_notes") %>% 
+  drop_na("release_notes") %>% 
   distinct() 
 
 Q7_1 %>% 
-  count(Release_Notes) 
+  count(release_notes) 
 
 # Q7_1[Q7_1==""] <- NA
 
 Q7_1 %>% 
-  filter(Release_Notes != "") %>% 
-  ggplot(aes(factor(Release_Notes))) +
+  filter(release_notes != "") %>% 
+  ggplot(aes(factor(release_notes))) +
   # drop_na() +
   geom_bar(stat="count", position = "dodge") + 
   scale_fill_brewer(palette = "Set1")
@@ -410,12 +410,16 @@ Q7 <- April12_2 %>%
   drop_na("Release_Notes") %>% 
   distinct() 
 
+Q7a <- Q7_1[, c(68, 69) ] # recipient email, dept, profile.name, period, colname, value
+
 Q7 <- April12_2 %>% 
   pivot_longer(cols = c(Q7.1_2_modified, `Q7.2_2 Have attended Bi weekly live demonstrations (i.e. Sprint demos)`),
                names_to = "col_name_demos", 
                values_to = "sprint_demos") %>% 
   drop_na("sprint_demos") %>% 
   distinct() 
+
+Q7b <- Q7_2[, c(69, 70) ] # recipient email, dept, profile.name, period, colname, value
 
 Q7 <- April12_2 %>% 
   pivot_longer(cols = c(Q7.1_3_modified, `Q7.2_3 Have used Communities of practice (i.e. Trellis user groups)`),
@@ -424,18 +428,25 @@ Q7 <- April12_2 %>%
   drop_na("user_groups") %>% 
   distinct() 
 
+Q7c <- Q7_3[, c(70, 71) ] # recipient email, dept, profile.name, period, colname, value
+
 Q7<- April12_2 %>% 
   pivot_longer(cols = c(Q7.1_4_modified, `Q7.2_4 Have attended Monthly information sessions`),
                names_to = "col_name_monthly", 
                values_to = "monthly") %>% 
   drop_na("monthly") %>% 
   distinct() 
+
+Q7d <- Q7_4[, c(71, 72) ] # recipient email, dept, profile.name, period, colname, value
+
 Q7 <- April12_2 %>% 
   pivot_longer(cols = c(Q7.1_5_modified, `Q7.2_5 Have used Newsletter/Digest`),
                names_to = "col_name_newsletter", 
                values_to = "newsletter") %>% 
   drop_na("newsletter") %>% 
   distinct() 
+Q7e <- Q7_5[, c(72, 73) ] # recipient email, dept, profile.name, period, colname, value
+
 Q7 <- April12_2 %>% 
   pivot_longer(cols = c(Q7.1_6_modified, `Q7.2_6 Have attended None of these`),
                names_to = "col_name_none", 
@@ -443,13 +454,56 @@ Q7 <- April12_2 %>%
   drop_na("none") %>% 
   distinct()
 
+Q7f <- Q7_6[, c(73, 74) ] # recipient email, dept, profile.name, period, colname, value
+
 data %>% 
   mutate(q1_mod = ifelse...) %>% 
   select(-q1) %>% 
   pivot_longer(cols = everything(), names_to = "question", values_to = "answer") %>% 
   ggplot(aes(x = answer)) + 
   geom_bar() + 
-  facet_wrap(vars(question), scales = "free_x") # scales = "free" 
+  facet_wrap(vars(question), scales = "free_x", ncol=1) # scales = "free" 
+
+# merge the Q7 files
+Q7 <- merge(Q7a, Q7b, by = 0, all = TRUE)
+Q7 <- merge(Q7, Q7c, by = 0, all = TRUE)
+Q7 <- merge(Q7, Q7d, by = 0, all = TRUE)
+Q7 <- merge(Q7, Q7e, by = 0, all = TRUE)
+Q7 <- merge(Q7, Q7f, by = 0, all = TRUE)
+
+Q7_new <- subset(Q7, select= - c(1:5)) # recheck the numbers
+
+# Q7_new2 <- Q7_new                              # Replicate data
+# Q7_new2$group <- factor(data_new$group,      # Reordering group factor levels
+#                          levels = c("B", "A", "C", "D"))
+
+Trellis_resources <- c(
+  `monthly` = "Monthly Info Sessions",
+  `newsletter` = "Newsletters",
+  `release_notes` = "Release Notes",
+  `sprint_demos` = "Sprint Demos",
+  `user_groups` = "User Groups",
+  `none` = "None of These"
+)
+
+# Q7_new2 <- Q7_new %>% 
+#   pivot_longer(cols = c(release_notes, sprint_demos, user_groups, monthly, newsletter, none), 
+#                names_to = "question", values_to = "answer") 
+# Q7_new2 <- factor(Q7$new2$answer,      # Reordering group factor levels
+#        levels = c("monthly", "newsletter", "release_notes", "sprint_demos", "user_groups", "none"))
+
+Q7_new %>% 
+  pivot_longer(cols = c(release_notes, sprint_demos, user_groups, monthly, newsletter, none), 
+               names_to = "question", values_to = "answer") %>% 
+  filter(answer != "") %>% 
+  ggplot(aes(x = factor(answer), fill = factor(answer))) + 
+  geom_bar(stat="count", position = "dodge") + 
+  facet_wrap(vars(question), scales = "free_x", ncol=3, labeller = as_labeller(Trellis_resources)) +  # scales = "free" 
+  scale_fill_brewer(palette = "Set2") + 
+  labs(title = "Question 7 - Usage of Trellis Resources",
+       subtitle = "full data", fill = "Answer") +
+  xlab("Answer") + 
+  ylab("Count") 
 
 ## Q8
 April12_2$Q8[April12_2$Q8==""] <- NA
