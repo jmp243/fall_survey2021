@@ -111,9 +111,33 @@ April25_2 %>%
 # products <- April25_2[,75:80] # these are the columns of created Q8_val1 through 6
 
 # pivot the table longer
-April25_2 %>% 
-  count(c(counter.Events, counter.External.Partners, counter.Marketing...SF, counter.Reports, counter.SAFER, counter.Scheduling.Notes, counter.Service.Desk))
+library(data.table)
 
+# April25_2 %>% 
+#   gather("key", "value", counter.Events, counter.External.Partners, counter.Marketing...SF, counter.Reports, counter.SAFER, counter.Scheduling.Notes, counter.Service.Desk) %>% 
+#   group_by(value) %>%
+#   summarise(n=n())
+table(April25_2$counter.Events)
+table(April25_2$counter.External.Partners)
+table(April25_2$counter.Marketing...SF)
+table(April25_2$counter.Reports)
+table(April25_2$counter.SAFER)
+table(April25_2$counter.Scheduling.Notes)
+table(April25_2$counter.Service.Desk)
+
+library(kableExtra)
+April25_2 %>% 
+  summarise(across(.cols = c(counter.Events, counter.External.Partners, counter.Marketing...SF, counter.Reports, 
+                             counter.SAFER, counter.Scheduling.Notes, counter.Service.Desk), 
+                   .fns = sum, na.rm=TRUE)) %>% 
+  # function and tilda to modify the string and what you want to remove from it.
+  rename_with(.fn= ~str_remove(.x, "counter.") %>% 
+                str_replace("\\.", " ")) %>% 
+  rename(`Marketing in SF` = `Marketing ..SF`)
+
+# products_count <- t(sapply(April25_2[ , 45:51],    # Create table with counts
+#                        function(x) tapply(x, April25_2[ , 6], sum)))
+# products_count  
 # rename questions for Q3
 names(April25_2)[names(April25_2)=="Q3_1"] <- "Q3_1 My interaction with the Trellis team has been positive."
 names(April25_2)[names(April25_2)=="Q3_2"] <- "Q3_2 My interactions with the Trellis team have been informative."
@@ -535,6 +559,8 @@ Q7_new2 %>%
        subtitle = "full data", fill = "Answer") +
   xlab("Answer") + 
   ylab("Count") 
+
+
 ## Q8
 April25_2$Q8[April25_2$Q8==""] <- NA
 
