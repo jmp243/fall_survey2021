@@ -4,13 +4,21 @@ author: "Jung Mee Park"
 date: "4/12/2022"
 output: html_document
 ---
-```{r}
+```{r include=FALSE}
 getwd()
-setwd("~/Documents/Trellis/Survey/Spring2022")
+setwd("~/Documents/Trellis/Survey/Fall2021/Spring2022")
 
-questions <- read.csv("spring2022_survey_questions.csv", header = T)
-transposed_qu <- t(questions)
-print(transposed_qu)
+April25 <- read.csv("Trellis Program Survey - Spring 2022_April 25, 2022_09.38.csv", header = T)
 
 ```
+
+## Overview
+The spring survey was sent out to 1267 emails. 239 individuals started the emails and 189 responses were recorded. 
+
+### Key takeaways
+* The support from Trellis staff has been positive.
+* However, initial training was mainly somewhat satisfactory.
+* Members of the Salesforce base found the initial training extremely dissatisfactory.
+* Only about half of the respondents were aware of many of the Trellis usage resources. 
+* Of those who were aware only about a third used trellis resources such as monthly info sessions, newsletters, release notes, sprint demos and user groups.
 
