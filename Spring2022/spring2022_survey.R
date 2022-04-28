@@ -66,7 +66,10 @@ April25 <- April25 %>%
   mutate(AZ_created_date = as.Date(AZ_created_time))
 
 # create periods
-April25 <- April25 %>% 
+# dec to now 2022 (this semester)
+# july to end of november (2nd )
+#
+April25 <- April25 %>%
   mutate(
     period = case_when(AZ_created_date < "2021-05-01" ~ "More than 12 months",
                        AZ_created_date <= "2021-11-01" ~ "Six to 12 months",
@@ -75,11 +78,23 @@ April25 <- April25 %>%
     )
   )
 
+April25 <- April25 %>%
+  mutate(
+    period = case_when(AZ_created_date < "2021-05-01" ~ "More than two semesters",
+                       AZ_created_date <= "2021-11-30" ~ "Last semester",
+                       # AZ_created_date <= "2021-12-01" ~ "This semester"
+                       TRUE ~ "This semester"
+    )
+  )
 
 # reorder factor for periods
+# April25$period = factor(April25$period, 
+#                             ordered = TRUE,
+#                             levels = c("Less than 1 month", "One to 6 months", "Six to 12 months", "More than 12 months"))
+
 April25$period = factor(April25$period, 
-                            ordered = TRUE,
-                            levels = c("Less than 1 month", "One to 6 months", "Six to 12 months", "More than 12 months"))
+                        ordered = TRUE,
+                        levels = c("More than two semesters", "Last semester", "This semester"))
 April25 %>% 
   count(period)
 
@@ -133,7 +148,8 @@ April25_2 %>%
   # function and tilda to modify the string and what you want to remove from it.
   rename_with(.fn= ~str_remove(.x, "counter.") %>% 
                 str_replace("\\.", " ")) %>% 
-  rename(`Marketing in SF` = `Marketing ..SF`)
+  rename(`Marketing in SF` = `Marketing ..SF`) %>% 
+  kable()
 
 # products_count <- t(sapply(April25_2[ , 45:51],    # Create table with counts
 #                        function(x) tapply(x, April25_2[ , 6], sum)))
@@ -146,6 +162,7 @@ names(April25_2)[names(April25_2)=="Q3_4"] <- "Q3_4 Trellis staff supported me i
 
 
 # LIKERT for q3
+# adjust output to 850 by 484
 q3_plot <- plot(likert(April25_2[,18:21]), ordered = F, wrap= 40) # this looks good. but add more to it. 
 q3_plot <- q3_plot + labs(title = "Interactions with Trellis staff",
                           subtitle = "Question 3 - full data") 
@@ -205,13 +222,38 @@ Q4graph2 <- April25_2%>%
   ggplot(aes(x = Q4, y = n, fill = Profile.Name)) +
   geom_bar(aes(fill = Profile.Name), stat = "identity") +
   geom_col(width=0.7)+
+  scale_x_discrete(guide = guide_axis(n.dodge=2))+
   geom_text(aes(label = paste0(round(Percent * 100), '%')),
-            position = position_stack(vjust = 0.5))
+            position = position_stack(vjust = 0.5)) +
+  xlab("Answer") + 
+  ylab("Count") 
 
 Q4graph2 <- Q4graph2 + labs(title = "How satisfied were you with your initial training in Trellis?",
                           subtitle = "Question 4 - full data", fill = "Profile Name")
 
 print(Q4graph2)
+
+### periods added
+Q4graph3 <- April25_2%>%
+  # count how often each class occurs in each sample.
+  count(period,Q4)%>%
+  group_by(Q4)%>%
+  drop_na(Q4) %>%
+  mutate(Percent = n /sum(n))%>%
+  ggplot(aes(x = Q4, y = n, fill = period)) +
+  geom_bar(aes(fill = period), stat = "identity") +
+  geom_col(width=0.7)+
+  scale_x_discrete(guide = guide_axis(n.dodge=2))+
+  scale_fill_brewer(palette = "Set2") + 
+  xlab("Answer") + 
+  ylab("Count") +
+  geom_text(aes(label = paste0(round(Percent * 100), '%')),
+            position = position_stack(vjust = 0.5)) 
+
+Q4graph3 <- Q4graph3 + labs(title = "How satisfied were you with your initial training in Trellis?",
+                            subtitle = "Question 4 - full data", fill = "Period")
+
+print(Q4graph3)
 ## LIKERT for q6 
 names(April25_2)[names(April25_2)=="Q6_1"] <- "Q6_1 I understand what resources are available to support my use of Trellis."
 names(April25_2)[names(April25_2)=="Q6_2"] <- "Q6_2 I continue to feel supported in my use of Trellis."
@@ -555,6 +597,7 @@ Q7_new2 %>%
   geom_bar(stat="count", position = "dodge") + 
   facet_wrap(vars(question), scales = "free_x", ncol=3, labeller = as_labeller(Trellis_resources)) +  # scales = "free" 
   scale_fill_brewer(palette = "Set2") + 
+  scale_x_discrete(guide = guide_axis(n.dodge=2))+
   labs(title = "Question 7 - Usage of Trellis Resources",
        subtitle = "full data", fill = "Answer") +
   xlab("Answer") + 
@@ -572,10 +615,10 @@ April25_2[c('Q8_val1', 'Q8_val2', 'Q8_val3', 'Q8_val4', 'Q8_val5', 'Q8_val6')] <
 # April12_3 <- April12_2 %>% separate(Q8, c('Q8_val1', 'Q8_val2', 'Q8_val3', 'Q8_val4', 'Q8_val5', 'Q8_val6'))
 Q8graph <- April25_2[,75:80] # these are the columns of created Q8_val1 through 6
 
+
 # pivot the table longer
 long_Q8 <- Q8graph %>% 
   pivot_longer(everything(), names_to = "question", values_to = "response", values_drop_na = TRUE)
-
 # replace with NA
 long_Q8[long_Q8==""] <- NA
 
@@ -594,7 +637,10 @@ Q8graph <-
   labs(x = "", y = "") +
   # coord_flip() +
   theme(legend.position="none") +
-  geom_text(aes(label = scales::percent(pct), y = if_else(count > 0.1*max(count), count/2, count+ 0.05*max(count))))
+  scale_x_discrete(guide = guide_axis(n.dodge=2))+
+  geom_text(aes(label = scales::percent(pct), y = if_else(count > 0.1*max(count), count/2, count+ 0.05*max(count)))) +
+  xlab("Answer") + 
+  ylab("Count") 
 
 
 Q8graph <- Q8graph + labs(title = "Which of these tools do you use to get help with Trellis?",
@@ -602,6 +648,34 @@ Q8graph <- Q8graph + labs(title = "Which of these tools do you use to get help w
   theme(legend.position="none")
 
 print(Q8graph)
+
+# longer Q8 with fill
+longer_Q8 <- April25_2[, c(61, 68, 75, 76,77,78,79,80)]
+longer_Q8_2 <- longer_Q8 %>% 
+  pivot_longer(cols = c(3:8), names_to = "question", values_to = "response", values_drop_na = TRUE)
+# replace with NA
+longer_Q8_2[longer_Q8_2==""] <- NA
+
+options(dplyr.summarise.inform = FALSE)
+Q8_pct2 <- longer_Q8_2 %>% 
+  drop_na() %>% 
+  group_by(response, Profile.Name) %>%
+  summarize(count = n()) %>%  # count records by species
+  mutate(pct = count/sum(count))
+
+Q8graph2 <- Q8_pct2 %>% 
+  ggplot(aes(response,count, fill = Profile.Name)) +
+  geom_bar(aes(fill = Profile.Name), stat = "identity") +
+  geom_col(width=0.7)+
+  scale_x_discrete(guide = guide_axis(n.dodge=2))+
+  geom_text(aes(label = paste0(round(pct * 100), '%')),
+            position = position_stack(vjust = 0.5)) +
+  xlab("Answer") + 
+  ylab("Count") 
+
+Q8graph2 <- Q8graph2 + labs(title = "Which of these tools do you use to get help with Trellis?",
+                          subtitle = "Question 8 - full data", fill= "Profile Name")  
+print(Q8graph2)
 
 # Likert Q10
 # rename questions for Q10
