@@ -18,7 +18,7 @@ print(transposed_qu)
 
 # read in responses
 # April12 <- read.csv("Trellis Program Survey - Spring 2022_April 12, 2022_11.20.csv", header = T)
-April25 <- read.csv("Trellis Program Survey - Spring 2022_April 25, 2022_09.38.csv", header = T)
+April25 <- read.csv("Trellis Program Survey - Spring 2022_April 28, 2022_10.53.csv", header = T)
 #### load in libraries ####
 library(readxl)
 library(dplyr)
@@ -46,9 +46,9 @@ April25 %>%
   mutate(across(.cols = everything(), is.na)) %>% 
   summarise(across(.cols = everything(), ~ sum(.x)/n()))
 
-# remove test email cases
-April25 <- April25[!(April25$RecipientEmail=="park.schlawin@gmail.com" | April25$RecipientEmail=="jmpark@arizona.edu"| April25$RecipientEmail=="jmpark@email.arizona.edu" | April25$RecipientEmail=="fkmiller@arizona.edu"  ),]
-April25
+# remove test email cases or blank emails
+April25 <- April25[!(April25$RecipientEmail=="park.schlawin@gmail.com" | April25$RecipientEmail=="jmpark@arizona.edu"| April25$RecipientEmail=="jmpark@email.arizona.edu" | April25$RecipientEmail=="fkmiller@arizona.edu" | April25$RecipientEmail=="" ),]
+sum(is.na(April25$RecipientEmail))
 
 # for created date
 head(April25$CreatedDate)
@@ -69,14 +69,14 @@ April25 <- April25 %>%
 # dec to now 2022 (this semester)
 # july to end of november (2nd )
 #
-April25 <- April25 %>%
-  mutate(
-    period = case_when(AZ_created_date < "2021-05-01" ~ "More than 12 months",
-                       AZ_created_date <= "2021-11-01" ~ "Six to 12 months",
-                       AZ_created_date <= "2022-04-01" ~ "One to 6 months",
-                       TRUE ~ "Less than 1 month"
-    )
-  )
+# April25 <- April25 %>%
+#   mutate(
+#     period = case_when(AZ_created_date < "2021-05-01" ~ "More than 12 months",
+#                        AZ_created_date <= "2021-11-01" ~ "Six to 12 months",
+#                        AZ_created_date <= "2022-04-01" ~ "One to 6 months",
+#                        TRUE ~ "Less than 1 month"
+#     )
+#   )
 
 April25 <- April25 %>%
   mutate(
@@ -132,24 +132,28 @@ library(data.table)
 #   gather("key", "value", counter.Events, counter.External.Partners, counter.Marketing...SF, counter.Reports, counter.SAFER, counter.Scheduling.Notes, counter.Service.Desk) %>% 
 #   group_by(value) %>%
 #   summarise(n=n())
-table(April25_2$counter.Events)
-table(April25_2$counter.External.Partners)
-table(April25_2$counter.Marketing...SF)
-table(April25_2$counter.Reports)
-table(April25_2$counter.SAFER)
-table(April25_2$counter.Scheduling.Notes)
-table(April25_2$counter.Service.Desk)
+# table(April25_2$counter.Events)
+# table(April25_2$counter.External.Partners)
+# table(April25_2$counter.Marketing...SF)
+# table(April25_2$counter.Reports)
+# table(April25_2$counter.SAFER)
+# table(April25_2$counter.Scheduling.Notes)
+# table(April25_2$counter.Service.Desk)
 
-library(kableExtra)
 April25_2 %>% 
-  summarise(across(.cols = c(counter.Events, counter.External.Partners, counter.Marketing...SF, counter.Reports, 
-                             counter.SAFER, counter.Scheduling.Notes, counter.Service.Desk), 
-                   .fns = sum, na.rm=TRUE)) %>% 
+  count(allproducts)
+
+# library(kableExtra)
+April25_2 %>%
+  summarise(across(.cols = c(counter.Events, counter.External.Partners, counter.Marketing...SF, counter.Reports,
+                             counter.SAFER, counter.Scheduling.Notes, counter.Service.Desk),
+                   .fns = sum, na.rm=TRUE)) %>%
   # function and tilda to modify the string and what you want to remove from it.
-  rename_with(.fn= ~str_remove(.x, "counter.") %>% 
-                str_replace("\\.", " ")) %>% 
-  rename(`Marketing in SF` = `Marketing ..SF`) %>% 
-  kable()
+  rename_with(.fn= ~str_remove(.x, "counter.") %>%
+                str_replace("\\.", " ")) %>%
+  rename(`Marketing in SF` = `Marketing ..SF`) 
+# %>%
+#   kable()
 
 # products_count <- t(sapply(April25_2[ , 45:51],    # Create table with counts
 #                        function(x) tapply(x, April25_2[ , 6], sum)))
@@ -162,7 +166,7 @@ names(April25_2)[names(April25_2)=="Q3_4"] <- "Q3_4 Trellis staff supported me i
 
 
 # LIKERT for q3
-# adjust output to 850 by 484
+# adjust output to 1000 by 484
 q3_plot <- plot(likert(April25_2[,18:21]), ordered = F, wrap= 40) # this looks good. but add more to it. 
 q3_plot <- q3_plot + labs(title = "Interactions with Trellis staff",
                           subtitle = "Question 3 - full data") 
@@ -183,7 +187,6 @@ q4_plot
 
 ## fill response with another variable like Profile.Name
 library(scales)
-
 
 April25_2%>%
   # count how often each class occurs in each sample.
@@ -253,7 +256,8 @@ Q4graph3 <- April25_2%>%
 Q4graph3 <- Q4graph3 + labs(title = "How satisfied were you with your initial training in Trellis?",
                             subtitle = "Question 4 - full data", fill = "Period")
 
-print(Q4graph3)
+print(Q4graph3) #survivor bias
+
 ## LIKERT for q6 
 names(April25_2)[names(April25_2)=="Q6_1"] <- "Q6_1 I understand what resources are available to support my use of Trellis."
 names(April25_2)[names(April25_2)=="Q6_2"] <- "Q6_2 I continue to feel supported in my use of Trellis."
@@ -558,7 +562,7 @@ Q7 <- merge(Q7, Q7e, by = 0, all = TRUE)
 Q7 <- merge(Q7, Q7f, by = 0, all = TRUE)
 
 Q7_new <- subset(Q7, select= - c(1:5)) # recheck the numbers
-
+#
 # Q7_new2 <- Q7_new                              # Replicate data
 # Q7_new2$group <- factor(data_new$group,      # Reordering group factor levels
 #                          levels = c("B", "A", "C", "D"))
@@ -574,13 +578,21 @@ Trellis_resources <- c(
 
 Q7_new2 <- Q7_new %>%
   pivot_longer(cols = c(release_notes, sprint_demos, user_groups, monthly, newsletter, none),
-               names_to = "question", values_to = "answer")
-# Q7_new2 <- factor(Q7$new2$answer,      # Reordering group factor levels
+               names_to = "question", values_to = "answer") 
+# %>% 
+#   mutate(question = as.factor(question), 
+#          levels = c("monthly", "newsletter", "release_notes", "sprint_demos", "user_groups", "none")) 
+
+# #col_name_release, col_name_demos, col_name_user, col_name_monthly, col_name_newsletter, col_name_none
+# Q7_new2$question <- factor(Q7_new2$question,      # Reordering group factor levels
 #        levels = c("monthly", "newsletter", "release_notes", "sprint_demos", "user_groups", "none"))
 
 Q7_new %>% 
-  pivot_longer(cols = c(release_notes, sprint_demos, user_groups, monthly, newsletter, none), 
+  pivot_longer(cols = c(none, release_notes, sprint_demos, user_groups, monthly, newsletter), 
                names_to = "question", values_to = "answer") %>% 
+  mutate(question = factor(question, levels = c("monthly", "newsletter", "release_notes", "sprint_demos", "user_groups", "none"))) %>%
+    # mutate(question = factor(question),
+    #        levels = c("monthly", "newsletter", "release_notes", "sprint_demos", "user_groups", "none")) %>%
   filter(answer != "") %>% 
   ggplot(aes(x = factor(answer), fill = factor(answer))) + 
   geom_bar(stat="count", position = "dodge") + 
@@ -588,20 +600,21 @@ Q7_new %>%
   scale_fill_brewer(palette = "Set2") + 
   labs(title = "Question 7 - Usage of Trellis Resources",
        subtitle = "full data", fill = "Answer") +
+  scale_x_discrete(guide = guide_axis(n.dodge=2))+
   xlab("Answer") + 
   ylab("Count") 
 
-Q7_new2 %>% 
-  filter(answer != "") %>% 
-  ggplot(aes(x = factor(answer), fill = factor(answer))) + 
-  geom_bar(stat="count", position = "dodge") + 
-  facet_wrap(vars(question), scales = "free_x", ncol=3, labeller = as_labeller(Trellis_resources)) +  # scales = "free" 
-  scale_fill_brewer(palette = "Set2") + 
-  scale_x_discrete(guide = guide_axis(n.dodge=2))+
-  labs(title = "Question 7 - Usage of Trellis Resources",
-       subtitle = "full data", fill = "Answer") +
-  xlab("Answer") + 
-  ylab("Count") 
+# Q7_new2 %>% 
+#   filter(answer != "") %>% 
+#   ggplot(aes(x = factor(answer), fill = factor(answer))) + 
+#   geom_bar(stat="count", position = "dodge") + 
+#   facet_wrap(vars(question), scales = "free_x", ncol=3, labeller = as_labeller(Trellis_resources)) +  # scales = "free" 
+#   scale_fill_brewer(palette = "Set2") + 
+#   scale_x_discrete(guide = guide_axis(n.dodge=2))+
+#   labs(title = "Question 7 - Usage of Trellis Resources",
+#        subtitle = "full data", fill = "Answer") +
+#   xlab("Answer") + 
+#   ylab("Count") 
 
 
 ## Q8
@@ -627,7 +640,11 @@ Q8_pct <- long_Q8 %>%
   drop_na() %>% 
   group_by(response) %>%
   summarize(count = n()) %>%  # count records by species
-  mutate(pct = count/sum(count))
+  mutate(pct = count/sum(count)) %>% 
+  mutate(response = factor(response, 
+                           levels = c("24/7 ", "Asking my peers ", "Drop in hours/Online Training ", 
+                                      "Knowledge Articles ",
+                                      "Trellis Teams chat", "Trellis user groups ", "None of these")))
 
 Q8_pct
 
@@ -652,7 +669,11 @@ print(Q8graph)
 # longer Q8 with fill
 longer_Q8 <- April25_2[, c(61, 68, 75, 76,77,78,79,80)]
 longer_Q8_2 <- longer_Q8 %>% 
-  pivot_longer(cols = c(3:8), names_to = "question", values_to = "response", values_drop_na = TRUE)
+  pivot_longer(cols = c(3:8), names_to = "question", values_to = "response", values_drop_na = TRUE) %>% 
+  mutate(response = factor(response, 
+                           levels = c("24/7 ", "Asking my peers ", "Drop in hours/Online Training ", 
+                                      "Knowledge Articles ",
+                                      "Trellis Teams chat", "Trellis user groups ", "None of these")))
 # replace with NA
 longer_Q8_2[longer_Q8_2==""] <- NA
 
@@ -677,6 +698,28 @@ Q8graph2 <- Q8graph2 + labs(title = "Which of these tools do you use to get help
                           subtitle = "Question 8 - full data", fill= "Profile Name")  
 print(Q8graph2)
 
+# graph with time breakdown 
+Q8_pct3 <- longer_Q8_2 %>% 
+  drop_na() %>% 
+  group_by(response, period) %>%
+  summarize(count = n()) %>%  # count records by species
+  mutate(pct = count/sum(count))
+
+Q8graph3 <- Q8_pct3 %>% 
+  ggplot(aes(response,count, fill = period)) +
+  geom_bar(aes(fill = period), stat = "identity") +
+  geom_col(width=0.7)+
+  scale_x_discrete(guide = guide_axis(n.dodge=2))+
+  geom_text(aes(label = paste0(round(pct * 100), '%')),
+            position = position_stack(vjust = 0.5)) +
+  scale_fill_brewer(palette = "Set2") + 
+  xlab("Answer") + 
+  ylab("Count") 
+
+Q8graph3 <- Q8graph3 + labs(title = "Which of these tools do you use to get help with Trellis?",
+                            subtitle = "Question 8 - full data", fill= "Period")  
+print(Q8graph3)
+
 # Likert Q10
 # rename questions for Q10
 names(April25_2)[names(April25_2)=="Q10_1"] <- "Q10_1 I feel comfortable using Trellis."
@@ -688,6 +731,73 @@ q10_plot <- q10_plot + labs(title = "Ease of Use",
                           subtitle = "Question 10 - full data") 
 q10_plot
 
+# graph with period for Q10_1
+q10_1_plot <- April25_2%>%
+  # count how often each class occurs in each sample.
+  count(period,`Q10_1 I feel comfortable using Trellis.`)%>%
+  group_by(`Q10_1 I feel comfortable using Trellis.`)%>%
+  drop_na(`Q10_1 I feel comfortable using Trellis.`) %>%
+  mutate(Percent = n /sum(n))%>%
+  ggplot(aes(x = `Q10_1 I feel comfortable using Trellis.`, y = n, fill = period)) +
+  geom_bar(aes(fill = period), stat = "identity") +
+  geom_col(width=0.7)+
+  scale_x_discrete(guide = guide_axis(n.dodge=2))+
+  scale_fill_brewer(palette = "Set2") + 
+  xlab("Answer") + 
+  ylab("Count") +
+  geom_text(aes(label = paste0(round(Percent * 100), '%')),
+            position = position_stack(vjust = 0.5), size = 3) 
+
+q10_1_plot <- q10_1_plot + labs(title = "I feel comfortable using Trellis",
+                                subtitle = "Question 10_1 - full data", fill = "Period")
+
+print(q10_1_plot) #survivor bias
+
+### job easier by period
+q10_2_plot <- April25_2%>%
+  # count how often each class occurs in each sample.
+  count(period, `Q10_2 Trellis makes it easy for me to access the information I need to do my job.`)%>%
+  group_by(`Q10_2 Trellis makes it easy for me to access the information I need to do my job.`)%>%
+  drop_na(`Q10_2 Trellis makes it easy for me to access the information I need to do my job.`) %>%
+  mutate(Percent = n /sum(n))%>%
+  ggplot(aes(x = `Q10_2 Trellis makes it easy for me to access the information I need to do my job.`, y = n, fill = period)) +
+  geom_bar(aes(fill = period), stat = "identity") +
+  geom_col(width=0.7)+
+  scale_x_discrete(guide = guide_axis(n.dodge=2))+
+  scale_fill_brewer(palette = "Set2") + 
+  xlab("Answer") + 
+  ylab("Count") +
+  geom_text(aes(label = paste0(round(Percent * 100), '%')),
+            position = position_stack(vjust = 0.5), size = 3) 
+
+q10_2_plot <- q10_2_plot + labs(title = "Easy Access to Information",
+                                subtitle = "Question 10_2 - full data", fill = "Period")
+
+print(q10_2_plot) #survivor bias
+
+# job easier by profile
+q10_2_plot2 <- April25_2%>%
+  # count how often each class occurs in each sample.
+  count(Profile.Name, `Q10_2 Trellis makes it easy for me to access the information I need to do my job.`)%>%
+  group_by(`Q10_2 Trellis makes it easy for me to access the information I need to do my job.`)%>%
+  drop_na(`Q10_2 Trellis makes it easy for me to access the information I need to do my job.`) %>%
+  mutate(Percent = n /sum(n))%>%
+  ggplot(aes(x = `Q10_2 Trellis makes it easy for me to access the information I need to do my job.`, 
+             y = n, fill = Profile.Name)) +
+  geom_bar(aes(fill = Profile.Name), stat = "identity") +
+  geom_col(width=0.7)+
+  scale_x_discrete(guide = guide_axis(n.dodge=2))+
+  scale_fill_brewer(palette = "Set2") + 
+  xlab("Answer") + 
+  ylab("Count") +
+  geom_text(aes(label = paste0(round(Percent * 100), '%')),
+            position = position_stack(vjust = 0.5), size = 3) 
+
+q10_2_plot2 <- q10_2_plot2 + labs(title = "Easy Access to Information",
+                                subtitle = "Question 10_2 - full data", fill = "Profile Name")
+
+print(q10_2_plot2) #survivor bias
+##
 # Likert Q12
 # rename questions for Q12
 names(April25_2)[names(April25_2)=="Q12_1"] <- "Q12_1 I believe access to the Trellis data allows me to provide better service."
@@ -714,3 +824,10 @@ sum(is.na(April25_2$Q4)) #29
 April25_2$Q8[April25_2$Q8==""] <- NA
 
 sum(is.na(April25_2$Q8)) 
+
+## lesson on 
+# %in% only does exact match. under the hood, it is all.equal
+remotes::install_github(("MCMaurer/inclose"))
+library(inclose) # this uses tolerance for decimals. 
+# unit testing
+# continuous develping

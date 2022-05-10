@@ -1,10 +1,11 @@
 ---
-title: "spring2022_survey"
+title: "Spring 2022 Survey"
 author: "Jung Mee Park"
 date: "4/12/2022"
 output: html_document
 ---
 ```{r include=FALSE}
+
 library(readxl)
 library(dplyr)
 library(ggplot2)
@@ -35,7 +36,7 @@ library(RColorBrewer)
 getwd()
 setwd("~/Documents/Trellis/Survey/Fall2021/Spring2022")
 
-April25 <- read.csv("Trellis Program Survey - Spring 2022_April 25, 2022_09.38.csv", header = T)
+April25 <- read.csv("Trellis Program Survey - Spring 2022_April 28, 2022_10.53.csv", header = T)
 
 April25 <- April25[!(April25$RecipientEmail=="park.schlawin@gmail.com" | April25$RecipientEmail=="jmpark@arizona.edu"| April25$RecipientEmail=="jmpark@email.arizona.edu" | April25$RecipientEmail=="fkmiller@arizona.edu"  ),]
 April25
@@ -51,30 +52,31 @@ April25 <- dplyr::mutate(April25, AZ_created_time) # AZ created date added
 April25 <- April25 %>% 
   mutate(AZ_created_date = as.Date(AZ_created_time))
 # create periods
-April25 <- April25 %>% 
+April25 <- April25 %>%
   mutate(
-    period = case_when(AZ_created_date < "2021-05-01" ~ "More than 12 months",
-                       AZ_created_date <= "2021-11-01" ~ "Six to 12 months",
-                       AZ_created_date <= "2022-04-01" ~ "One to 6 months",
-                       TRUE ~ "Less than 1 month"
+    period = case_when(AZ_created_date < "2021-05-01" ~ "More than two semesters",
+                       AZ_created_date <= "2021-11-30" ~ "Last semester",
+                       # AZ_created_date <= "2021-12-01" ~ "This semester"
+                       TRUE ~ "This semester"
     )
   )
 
-
 # reorder factor for periods
 April25$period = factor(April25$period, 
-                            ordered = TRUE,
-                            levels = c("Less than 1 month", "One to 6 months", "Six to 12 months", "More than 12 months"))
+                        ordered = TRUE,
+                        levels = c("More than two semesters", "Last semester", "This semester"))
+
+April25 <- April25[!(April25$RecipientEmail=="park.schlawin@gmail.com" | April25$RecipientEmail=="jmpark@arizona.edu"| April25$RecipientEmail=="jmpark@email.arizona.edu" | April25$RecipientEmail=="fkmiller@arizona.edu" | April25$RecipientEmail=="" ),]
 
 ```
 
 # Overview
-The spring survey was sent out to 1267 emails. 239 individuals started the emails and 189 responses were recorded. 
+The spring survey was sent out to 1266 emails. 239 individuals started the emails and 189 responses were recorded. 
 
-Breakdown of Respondents based on time at UA
+Breakdown of Respondents based on time as a Trellis user
 ```{r, echo=FALSE}
 April25 %>% 
-  count(period)
+  count(period) 
 ```
 
 
@@ -99,6 +101,7 @@ April25_2$Q4 = factor(April25_2$Q4,
 
 Breakdown of Respondents by Base
 ```{r, echo=FALSE}
+April25_2$Profile.Name[April25_2$Profile.Name=="advising base"] <- "Advising Base"
 April25_2 %>% 
   count(Profile.Name)
 ```
@@ -117,11 +120,14 @@ April25_2 %>%
 
 
 ### Key takeaways
-* The support from Trellis staff has been positive.
-* However, initial training was mainly somewhat satisfactory.
-* Members of the Salesforce base found the initial training extremely dissatisfactory.
-* Only about half of the respondents were aware of many of the Trellis usage resources. 
-* Of those who were aware only about a third used trellis resources such as monthly info sessions, newsletters, release notes, sprint demos and user groups.
+* About 75% of the respondents agree that the support from Trellis staff has been positive and informative.
+* 59% of the respondents were satisfied with the initial training they received.
+18% mainly from the Salesforce base found the initial training extremely dissatisfactory.
+* Fewer than half of the respondents were aware of many of the Trellis usage resources. 
+* Of those who were aware only about a third used trellis resources such as monthly info sessions, newsletters, release notes, sprint demos, and user groups.
+* Most users (30%) ask their peers for help using Trellis, followed by 24/7 (15%) and Trellis Teams chat (15%). 
+* 75% of the users feel comfortable using Trellis, although only about half the respondents found that Trellis made it easier for them to access the information they needed to do their jobs.
+
 
 ```{r include=FALSE}
 names(April25_2)[names(April25_2)=="Q3_1"] <- "Q3_1 My interaction with the Trellis team has been positive."
@@ -134,21 +140,27 @@ names(April25_2)[names(April25_2)=="Q3_4"] <- "Q3_4 Trellis staff supported me i
 ## Question 3: 
 ```{r, echo=FALSE}
 # LIKERT for q3
-q3_plot <- plot(likert(April25_2[,18:21]), ordered = F, wrap= 40)  
+q3_plot <- plot(likert(April25_2[,18:21]), ordered = F, wrap= 40, 
+                )  
 q3_plot <- q3_plot + labs(title = "Interactions with Trellis staff",
-                          subtitle = "Question 3 - full data") 
+                          subtitle = "Question 3 - full data") +
+                          guides(fill=guide_legend(nrow=3,byrow=TRUE))
 q3_plot
+# ggsave("test.jpg")
 ```
 
 ## Question 4: 
 ```{r, echo=FALSE}
 q4_plot <- plot(likert(April25_2[,22, drop=FALSE]), ordered = F, wrap= 40) # this looks good. but add more to it. 
 q4_plot <- q4_plot + labs(title = "Q4 How satisfied were you with your initial training in Trellis?",
-                          subtitle = "Question 4 - full data") 
+                          subtitle = "Question 4 - full data") +
+                          guides(fill=guide_legend(nrow=2,byrow=TRUE))
 q4_plot
 ```
 
+
 Breakdown by Profile Name
+
 ```{r, echo=FALSE}
 Q4graph2 <- April25_2%>%
   # count how often each class occurs in each sample.
@@ -172,6 +184,7 @@ print(Q4graph2)
 ```
 
 Breakdown by Period
+
 ```{r, echo=FALSE}
 ### periods added
 Q4graph3 <- April25_2%>%
@@ -208,7 +221,8 @@ names(April25_2)[names(April25_2)=="Q6_3"] <- "Q6_3 I am able to get answers to 
 q6_plot <- plot(likert(April25_2[,23:25]), ordered = T, wrap= 40) # this looks good. but add more to it. 
 
 q6_plot <- q6_plot + labs(title = "Suport for and knowledge of Trellis",
-                          subtitle = "Question 6 - full data") 
+                          subtitle = "Question 6 - full data") +
+                          guides(fill=guide_legend(nrow=3,byrow=TRUE))
 
 print(q6_plot)
 ```
@@ -479,10 +493,14 @@ Q7_new2 <- Q7_new %>%
 ```
 
 Trellis Resources Graph
+
 ```{r, echo=FALSE}
 Q7_new %>% 
-  pivot_longer(cols = c(release_notes, sprint_demos, user_groups, monthly, newsletter, none), 
+  pivot_longer(cols = c(none, release_notes, sprint_demos, user_groups, monthly, newsletter), 
                names_to = "question", values_to = "answer") %>% 
+  mutate(question = factor(question, levels = c("monthly", "newsletter", "release_notes", "sprint_demos", "user_groups", "none"))) %>%
+    # mutate(question = factor(question),
+    #        levels = c("monthly", "newsletter", "release_notes", "sprint_demos", "user_groups", "none")) %>%
   filter(answer != "") %>% 
   ggplot(aes(x = factor(answer), fill = factor(answer))) + 
   geom_bar(stat="count", position = "dodge") + 
@@ -510,7 +528,7 @@ Q8graph <- April25_2[,75:80] # these are the columns of created Q8_val1 through 
 
 # pivot the table longer
 long_Q8 <- Q8graph %>% 
-  pivot_longer(everything(), names_to = "question", values_to = "response", values_drop_na = TRUE)
+  pivot_longer(everything(), names_to = "question", values_to = "response", values_drop_na = TRUE) 
 
 # replace with NA
 long_Q8[long_Q8==""] <- NA
@@ -520,12 +538,17 @@ Q8_pct <- long_Q8 %>%
   drop_na() %>% 
   group_by(response) %>%
   summarize(count = n()) %>%  # count records by species
-  mutate(pct = count/sum(count))
+  mutate(pct = count/sum(count)) %>% 
+  mutate(response = factor(response, 
+                           levels = c("24/7 ", "Asking my peers ", "Drop in hours/Online Training ", 
+                                      "Knowledge Articles ",
+                                      "Trellis Teams chat", "Trellis user groups ", "None of these")))
 
 Q8_pct
 ```
 
-Graph
+
+
 ```{r, echo=FALSE}
 Q8graph <- 
   ggplot(Q8_pct, aes(response,count, fill = response)) +
@@ -539,16 +562,22 @@ Q8graph <-
 
 Q8graph <- Q8graph + labs(title = "Which of these tools do you use to get help with Trellis?",
                           subtitle = "Question 8 - full data") + 
-  theme(legend.position="none")
+                          theme(legend.position="none")
 
 print(Q8graph)
 ```
 
 Drilling down on Question 8
+Graph based on Profile Name
+
 ```{r, echo=FALSE}
 longer_Q8 <- April25_2[, c(61, 68, 75, 76,77,78,79,80)]
 longer_Q8_2 <- longer_Q8 %>% 
-  pivot_longer(cols = c(3:8), names_to = "question", values_to = "response", values_drop_na = TRUE)
+  pivot_longer(cols = c(3:8), names_to = "question", values_to = "response", values_drop_na = TRUE) %>% 
+  mutate(response = factor(response, 
+                           levels = c("24/7 ", "Asking my peers ", "Drop in hours/Online Training ", 
+                                      "Knowledge Articles ",
+                                      "Trellis Teams chat", "Trellis user groups ", "None of these")))
 
 longer_Q8_2[longer_Q8_2==""] <- NA
 
@@ -574,6 +603,30 @@ Q8graph2 <- Q8graph2 + labs(title = "Which of these tools do you use to get help
 print(Q8graph2)
 ```
 
+```{r, echo=FALSE}
+# graph with time breakdown 
+Q8_pct3 <- longer_Q8_2 %>% 
+  drop_na() %>% 
+  group_by(response, period) %>%
+  summarize(count = n()) %>%  # count records by species
+  mutate(pct = count/sum(count))
+
+Q8graph3 <- Q8_pct3 %>% 
+  ggplot(aes(response,count, fill = period)) +
+  geom_bar(aes(fill = period), stat = "identity") +
+  geom_col(width=0.7)+
+  scale_x_discrete(guide = guide_axis(n.dodge=2))+
+  geom_text(aes(label = paste0(round(pct * 100), '%')),
+            position = position_stack(vjust = 0.5)) +
+  scale_fill_brewer(palette = "Set2") + 
+  xlab("Answer") + 
+  ylab("Count") 
+
+Q8graph3 <- Q8graph3 + labs(title = "Which of these tools do you use to get help with Trellis?",
+                            subtitle = "Question 8 - full data", fill= "Period")  
+print(Q8graph3)
+```
+
 
 ## Question 10:
 ```{r, echo=FALSE}
@@ -584,9 +637,62 @@ names(April25_2)[names(April25_2)=="Q10_2"] <- "Q10_2 Trellis makes it easy for 
 # LIKERT for q10
 q10_plot <- plot(likert(April25_2[,39:40]), ordered = F, wrap= 40)
 q10_plot <- q10_plot + labs(title = "Ease of Use",
-                          subtitle = "Question 10 - full data") 
+                          subtitle = "Question 10 - full data") +
+                          guides(fill=guide_legend(nrow=3,byrow=TRUE))
 q10_plot
 ```
+
+Graph 10_1
+
+```{r, echo=FALSE}
+q10_1_plot <- April25_2%>%
+  # count how often each class occurs in each sample.
+  count(period,`Q10_1 I feel comfortable using Trellis.`)%>%
+  group_by(`Q10_1 I feel comfortable using Trellis.`)%>%
+  drop_na(`Q10_1 I feel comfortable using Trellis.`) %>%
+  mutate(Percent = n /sum(n))%>%
+  ggplot(aes(x = `Q10_1 I feel comfortable using Trellis.`, y = n, fill = period)) +
+  geom_bar(aes(fill = period), stat = "identity") +
+  geom_col(width=0.7)+
+  scale_x_discrete(guide = guide_axis(n.dodge=2))+
+  scale_fill_brewer(palette = "Set2") + 
+  xlab("Answer") + 
+  ylab("Count") +
+  geom_text(aes(label = paste0(round(Percent * 100), '%')),
+            position = position_stack(vjust = 0.5), size = 3) 
+
+q10_1_plot <- q10_1_plot + labs(title = "I feel comfortable using Trellis",
+                                subtitle = "Question 10_1 - full data", fill = "Period")
+
+print(q10_1_plot) #survivor bias
+
+```
+
+Graph 10_2
+
+```{r, echo=FALSE}
+q10_2_plot <- April25_2%>%
+  # count how often each class occurs in each sample.
+  count(period, `Q10_2 Trellis makes it easy for me to access the information I need to do my job.`)%>%
+  group_by(`Q10_2 Trellis makes it easy for me to access the information I need to do my job.`)%>%
+  drop_na(`Q10_2 Trellis makes it easy for me to access the information I need to do my job.`) %>%
+  mutate(Percent = n /sum(n))%>%
+  ggplot(aes(x = `Q10_2 Trellis makes it easy for me to access the information I need to do my job.`, y = n, fill = period)) +
+  geom_bar(aes(fill = period), stat = "identity") +
+  geom_col(width=0.7)+
+  scale_x_discrete(guide = guide_axis(n.dodge=2))+
+  scale_fill_brewer(palette = "Set2") + 
+  xlab("Answer") + 
+  ylab("Count") +
+  geom_text(aes(label = paste0(round(Percent * 100), '%')),
+            position = position_stack(vjust = 0.5), size = 3) 
+
+q10_2_plot <- q10_2_plot + labs(title = "Easy Access to Information",
+                                subtitle = "Question 10_2 - full data", fill = "Period")
+
+print(q10_2_plot) #survivor bias
+```
+
 ## Question 12:
 ```{r include=FALSE}
 # Likert Q12
@@ -595,12 +701,15 @@ names(April25_2)[names(April25_2)=="Q12_1"] <- "Q12_1 I believe access to the Tr
 names(April25_2)[names(April25_2)=="Q12_2"] <- "Q12_2 I would recommend Trellis capabilities to someone else."
 
 ```
+
 Graph
+
 ```{r, echo=FALSE}
 # LIKERT for q12
 q12_plot <- plot(likert(April25_2[,41:42]), ordered = F, wrap= 40) # this looks good. but add more to it. 
 q12_plot <- q12_plot + labs(title = "Value of Trellis",
-                            subtitle = "Question 12 - full data") 
+                            subtitle = "Question 12 - full data") +
+                            guides(fill=guide_legend(nrow=3,byrow=TRUE))
 q12_plot
 
 ```
