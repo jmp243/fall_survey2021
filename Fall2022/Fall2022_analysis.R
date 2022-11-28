@@ -866,26 +866,156 @@ q12_plot <- q12_plot + labs(title = "Value of Trellis",
                             subtitle = "Question 12 - full data") 
 q12_plot
 
+
+# Question 15
+names(Nov28_2)[names(Nov28_2)=="Q15_1"] <- "Q15_1 Case/Notes"
+names(Nov28_2)[names(Nov28_2)=="Q15_2"] <- "Q15_2 Enrollments"
+names(Nov28_2)[names(Nov28_2)=="Q15_3"] <- "Q15_3 EPR"
+names(Nov28_2)[names(Nov28_2)=="Q15_4"] <- "Q15_4 Appointments"
+names(Nov28_2)[names(Nov28_2)=="Q15_5"] <- "Q15_5 Event Attendance"
+names(Nov28_2)[names(Nov28_2)=="Q15_6"] <- "Q15_6 Emails Received"
+names(Nov28_2)[names(Nov28_2)=="Q15_7"] <- "Q15_7 None of these"
+
+# names(April25_2)[names(April25_2)=="Q7.2_3"] <- "Q7.2_3 Have used Communities of practice (i.e. Trellis user groups)"
+
+Nov28_2 <- Nov28_2 %>%
+  relocate("Q15_7 None of these", .after = "Q15_6 Emails Received")
+
+Q15 <- Nov28_2 %>% 
+  pivot_longer(cols = c("Q15_1 Case/Notes", "Q15_2 Enrollments", "Q15_3 EPR", "Q15_4 Appointments",
+                        "Q15_5 Event Attendance","Q15_6 Emails Received","Q15_7 None of these"),
+               names_to = "tools", 
+               values_to = "response") %>% 
+  # drop_na("Tech Issues Form") %>% 
+  distinct() %>% 
+  dplyr::select(period, tools, response, Profile.Name)
+
+Q15 %>%
+  filter(response != "") %>% 
+  count(response) 
+
+Q15 %>% 
+  filter(response != "") %>% 
+  ggplot(aes(factor(response), fill=response)) +
+  # drop_na() +
+  theme(legend.position="none") +
+  geom_bar(stat="count", position = "dodge") + 
+  scale_fill_brewer(palette = "Set1")
+
+
+# replace with NA
+Q15[Q15==""] <- NA
+Q15 <- Q15 %>%
+  dplyr::mutate(response = dplyr::recode(response, "Early Progress Reports" = 'EPR'))
+# create a table to calculate percentages
+Q15_pct <- Q15%>% 
+  drop_na() %>% 
+  group_by(response) %>%
+  summarize(count = n()) %>%  # count records by species
+  mutate(pct = count/sum(count)) %>% 
+  mutate(response = factor(response, 
+                           levels = c("Cases/Notes", "Enrollments", "EPR", "Appointments",
+                                      "Event Attendance","Emails Received","None of These")))
+
+Q15_pct
+
+Q15graph <- 
+  ggplot(Q15_pct, aes(response,count, fill = response)) +
+  geom_bar(stat='identity') +
+  labs(x = "", y = "") +
+  # coord_flip() +
+  theme(legend.position="none") +
+  scale_x_discrete(guide = guide_axis(n.dodge=2))+
+  geom_text(aes(label = scales::percent(pct), y = if_else(count > 0.1*max(count), count/2, count+ 0.05*max(count)))) +
+  xlab("Answer") + 
+  ylab("Count") 
+
+
+Q15graph <- Q15graph + labs(title = "Valuable Information within Trellis",
+                          subtitle = "Question 15 - full data") + 
+  theme(legend.position="none")
+
+print(Q15graph)
+
+# # longer Q8 with fill
+# longer_Q8 <- April25_2[, c(61, 68, 75, 76,77,78,79,80)]
+# longer_Q8_2 <- longer_Q8 %>% 
+#   pivot_longer(cols = c(3:8), names_to = "question", values_to = "response", values_drop_na = TRUE) %>% 
+#   mutate(response = factor(response, 
+#                            levels = c("24/7 ", "Asking my peers ", "Drop in hours/Online Training ", 
+#                                       "Knowledge Articles ",
+#                                       "Trellis Teams chat", "Trellis user groups ", "None of these")))
+# replace with NA
+# longer_Q8_2[longer_Q8_2==""] <- NA
+
+options(dplyr.summarise.inform = FALSE)
+Q15_pct2 <- Q15 %>% 
+  drop_na() %>% 
+  group_by(response, Profile.Name) %>%
+  summarize(count = n()) %>%  # count records by species
+  mutate(pct = count/sum(count))
+
+Q15graph2 <- Q15_pct2 %>% 
+  ggplot(aes(response,count, fill = Profile.Name)) +
+  geom_bar(aes(fill = Profile.Name), stat = "identity") +
+  geom_col(width=0.7)+
+  scale_x_discrete(guide = guide_axis(n.dodge=2))+
+  geom_text(aes(label = paste0(round(pct * 100), '%')),
+            position = position_stack(vjust = 0.5), size = 3) +
+  # theme(axis.title.y = element_text(size = 9)) +
+  xlab("Answer") + 
+  ylab("Count") 
+
+Q15graph2 <- Q15graph2 + labs(title = "Valuable Information through Trellis",
+                            subtitle = "Question 15 - full data", fill= "Profile Name")  
+print(Q15graph2)
+
+# graph with time breakdown 
+Q15_pct3 <- Q15 %>% 
+  drop_na() %>% 
+  group_by(period, response) %>% 
+  summarize(count = n()) %>% 
+  mutate(pct = count/sum(count))
+
+Q15_pct3
+
+Q15graph3 <- Q15_pct3 %>% 
+  ggplot(aes(response,count, fill = period)) +
+  geom_bar(aes(fill = period), stat = "identity") +
+  geom_col(width=0.7)+
+  scale_x_discrete(guide = guide_axis(n.dodge=2))+
+  geom_text(aes(label = paste0(round(pct * 100), '%')),
+            position = position_stack(vjust = 0.5), size = 3) +
+  scale_fill_brewer(palette = "Set2") + 
+  xlab("Answer") + 
+  ylab("Count") 
+
+Q15graph3 <- Q15graph3 + labs(title = "Valuable Information through Trellis",
+                              subtitle = "Question 15 - full data", fill= "Period")  
+print(Q15graph3)
+
+# Q7_1[Q7_1==""] <- NA
+
 # ### col sums for questions
 # April25_2$`Q3_1 My interaction with the Trellis team has been positive.`[April25_2$`Q3_1 My interaction with the Trellis team has been positive.`==""] <- NA
 # 
 # sum(is.na(April25_2$`Q3_1 My interaction with the Trellis team has been positive.`)) # 29 
 
-# Q4 
-#colSums(!is.na(dat))
-April25_2$Q4[April25_2$Q4==""] <- NA
-
-sum(is.na(April25_2$Q4)) #29 
-
-# Q8
-April25_2$Q8[April25_2$Q8==""] <- NA
-
-sum(is.na(April25_2$Q8)) 
+# # Q4 
+# #colSums(!is.na(dat))
+# April25_2$Q4[April25_2$Q4==""] <- NA
+# 
+# sum(is.na(April25_2$Q4)) #29 
+# 
+# # Q8
+# April25_2$Q8[April25_2$Q8==""] <- NA
+# 
+# sum(is.na(April25_2$Q8)) 
 
 ## lesson on 
 # %in% only does exact match. under the hood, it is all.equal
-remotes::install_github(("MCMaurer/inclose"))
-library(inclose) # this uses tolerance for decimals. 
+# remotes::install_github(("MCMaurer/inclose"))
+# library(inclose) # this uses tolerance for decimals. 
 # unit testing
 # continuous develping
 
