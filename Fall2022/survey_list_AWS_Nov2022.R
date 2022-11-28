@@ -235,6 +235,6 @@ for_use2 <- for_use %>%
                                                                 pattern = ", ",
                                                                 replacement = ", and "))) %>%
   # remove the helper column from output
-  select(-c(col_count, CreatedDate, ContactId)) 
+  select(-c(col_count, ContactId)) # add back in CreatedDate
 
 write.csv(for_use2, "2022_Nov2_SFTrellisUsersByProduct.csv")
