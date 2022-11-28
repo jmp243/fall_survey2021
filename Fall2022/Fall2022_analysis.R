@@ -21,12 +21,19 @@ library(knitr)
 library(lattice)
 library(likert)
 library(MASS)
-library(psych)
+# library(psych)
 library(viridis)
 library(here)
-library(flextable)
-library(devtools)
+# library(flextable)
+# library(devtools)
 library(broom)
+library(stringr)
+# load library
+library(tidyr)
+library(ggthemes)
+library(reshape2)
+library(RColorBrewer)
+library(scales)
 
 # get wd
 getwd()
@@ -68,7 +75,7 @@ Nov28$dates <- as.POSIXct(Nov28$CreatedDate,
 # change to AZ time 
 # t1 <- as.POSIXct(dates, tz = "GMT")
 # attributes(t1)$tzone
-AZ_created_time <- lubridate::with_tz(dates, "MST")
+# AZ_created_time <- lubridate::with_tz(dates, "MST")
 
 Nov28 <- Nov28 %>% 
   dplyr::mutate(AZ_created_date = as.Date(dates)) # AZ created date added
@@ -196,7 +203,7 @@ Nov28_2 %>%
 # q4_plot
 
 ## fill response with another variable like Profile.Name
-library(scales)
+
 
 # April25_2%>%
 #   # count how often each class occurs in each sample.
@@ -333,12 +340,7 @@ print(q6_plot)
 #                                   "I am aware.", 
 #                                   `Q7.1_1 Aware of Release notes`))
 
-# load library
-library(ggplot2)
-library(tidyr)
-library(ggthemes)
-library(reshape2)
-library(RColorBrewer)
+
 
 
 # Q7_1 <- April25_2 %>% 
@@ -633,7 +635,7 @@ library(RColorBrewer)
 # sum(is.na(Nov28_2$Q8)) 
 
 # disperse answers into long, currently comma separated
-library(stringr)
+
 # April25_2[c('Q8_val1', 'Q8_val2', 'Q8_val3', 'Q8_val4', 'Q8_val5', 'Q8_val6', 
 #             'Q8_val7')] <- str_split_fixed(Nov28_2$Q8, ',', 7)
 # # April12_3 <- April12_2 %>% separate(Q8, c('Q8_val1', 'Q8_val2', 'Q8_val3', 'Q8_val4', 'Q8_val5', 'Q8_val6'))
@@ -873,8 +875,8 @@ names(Nov28_2)[names(Nov28_2)=="Q15_2"] <- "Q15_2 Enrollments"
 names(Nov28_2)[names(Nov28_2)=="Q15_3"] <- "Q15_3 EPR"
 names(Nov28_2)[names(Nov28_2)=="Q15_4"] <- "Q15_4 Appointments"
 names(Nov28_2)[names(Nov28_2)=="Q15_5"] <- "Q15_5 Event Attendance"
-names(Nov28_2)[names(Nov28_2)=="Q15_6"] <- "Q15_6 Emails Received"
-names(Nov28_2)[names(Nov28_2)=="Q15_7"] <- "Q15_7 None of these"
+names(Nov28_2)[names(Nov28_2)=="Q15_7"] <- "Q15_7 Emails Received"
+names(Nov28_2)[names(Nov28_2)=="Q15_6"] <- "Q15_6 None of these"
 
 # names(April25_2)[names(April25_2)=="Q7.2_3"] <- "Q7.2_3 Have used Communities of practice (i.e. Trellis user groups)"
 
@@ -994,6 +996,84 @@ Q15graph3 <- Q15graph3 + labs(title = "Valuable Information through Trellis",
                               subtitle = "Question 15 - full data", fill= "Period")  
 print(Q15graph3)
 
+
+#### upset plot for Q8 and Q 15 ####
+library(ComplexUpset)
+library(UpSetR)
+upset_plot_Q8 <- Nov28_2 %>% 
+  dplyr::select(ResponseId, `Q8_1 Technical Issue Form`, `Q8_2 Monthly Trellis Demos`,
+         `Q8_3 Trellis User Community Meetings`, `Q8_4 Asking my peers`, `Q8_5 Trellis Teams (MS Teams)`,
+         `Q8_6 Ask Trellis team members directly`, `Q8_7 None of these`) %>% 
+  dplyr::distinct() 
+upset_plot_Q8 <- upset_plot_Q8 %>% 
+  dplyr::select(-ResponseId) %>% 
+  data.frame() %>%
+  # t() %>% # transpose the result, ugh
+  as_tibble()
+
+upset_plot_Q8 <- upset_plot_Q8 %>% 
+  dplyr::mutate(`Technical form` = ifelse(`Q8_1.Technical.Issue.Form` == "Technical Issue Form", 1, 0)) %>% 
+  dplyr::mutate(`Trellis Demos` = ifelse(`Q8_2.Monthly.Trellis.Demos` == "Monthly Trellis Demos", 1, 0)) %>% 
+  dplyr::mutate(`Comm user meetings` = ifelse(`Q8_3.Trellis.User.Community.Meetings` == "Trellis User Community Meetings", 1, 0)) %>% 
+  dplyr::mutate(`Ask a peer` = ifelse(`Q8_4.Asking.my.peers` == "Asking my peers ", 1, 0)) %>% 
+  dplyr::mutate(`MS Teams` = ifelse(`Q8_5.Trellis.Teams..MS.Teams.` == "Trellis Teams (MS Teams)", 1, 0)) %>% 
+  dplyr::mutate(`Trellis team member` = ifelse(`Q8_6.Ask.Trellis.team.members.directly` == "Ask Trellis team members directly. Please share who you most often contact below.", 1, 0)) %>% 
+  dplyr::mutate(`None of these` = ifelse(`Q8_7.None.of.these` == "None of these", 1, 0)) 
+
+upset_plot_Q8 <- upset_plot_Q8 %>% 
+  dplyr::select(`Technical form`, `Trellis Demos`, `Comm user meetings`, `Ask a peer`, `MS Teams`,
+                `Trellis team member`, `None of these`)
+  # Cat_SF_enroll <- Cat_SF_enroll %>%
+  # dplyr::mutate(Appt = ifelse(Appt.Sessions > 0, 1, 0)) %>% 
+  # dplyr::mutate(Edit = ifelse(Edit.Sessions > 0, 1, 0)) %>% 
+  # dplyr::mutate(Goal = ifelse(Goal.Sessions > 0, 1, 0))
+
+set_vars <- c("Technical form", "Trellis Demos", "Comm user meetings", "Ask a peer",
+              "MS Teams", "Trellis team member", "None of these")
+upset_plot_Q8 %>% print(n = nrow(upset_plot_Q8))
+
+ComplexUpset::upset(data = upset_plot_Q8, intersect = set_vars, ) +
+    labs(title = "Q8 responses")
+
+# Q 15 
+upset_plot_Q15 <- Nov28_2 %>% 
+  dplyr::select(ResponseId, `Q15_1 Case/Notes`, `Q15_2 Enrollments`,
+                `Q15_3 EPR`, `Q15_4 Appointments`, `Q15_5 Event Attendance`,
+                `Q15_6 Emails Received`, `Q15_7 None of these`) %>% 
+  dplyr::distinct() 
+upset_plot_Q15 <- upset_plot_Q15 %>% 
+  dplyr::select(-ResponseId) %>% 
+  data.frame() %>%
+  # t() %>% # transpose the result, ugh
+  as_tibble()
+
+upset_plot_Q15 <- upset_plot_Q15 %>% 
+  dplyr::mutate(`Case/Notes` = ifelse(`Q15_1.Case.Notes` == "Cases/Notes", 1, 0)) %>% 
+  dplyr::mutate(`Enrollments` = ifelse(`Q15_2.Enrollments` == "Enrollments", 1, 0)) %>% 
+  dplyr::mutate(`EPR` = ifelse(`Q15_3.EPR` == "Early Progress Reports", 1, 0)) %>% 
+  dplyr::mutate(`Appointments` = ifelse(`Q15_4.Appointments` == "Appointments", 1, 0)) %>% 
+  dplyr::mutate(`Event Attendance` = ifelse(`Q15_5.Event.Attendance` == "Event Attendance", 1, 0)) %>% 
+  dplyr::mutate(`None of these` = ifelse(`Q15_6.Emails.Received` == "None of These", 1, 0)) %>% 
+  dplyr::mutate(`None of these` = ifelse(`Q15_7.None.of.these` == "Emails Received", 1, 0)) 
+
+upset_plot_Q15 <- upset_plot_Q15 %>% 
+  dplyr::select()
+# Cat_SF_enroll <- Cat_SF_enroll %>%
+# dplyr::mutate(Appt = ifelse(Appt.Sessions > 0, 1, 0)) %>% 
+# dplyr::mutate(Edit = ifelse(Edit.Sessions > 0, 1, 0)) %>% 
+# dplyr::mutate(Goal = ifelse(Goal.Sessions > 0, 1, 0))
+
+set_vars <- c("Technical form", "Trellis Demos", "Comm user meetings", "Ask a peer",
+              "MS Teams", "Trellis team member", "None of these")
+upset_plot_Q8 %>% print(n = nrow(upset_plot_Q8))
+
+ComplexUpset::upset(data = upset_plot_Q8, intersect = set_vars, ) +
+  labs(title = "Q8 responses")
+
+# set_vars <- c("Appt", "Edit", "Goal")
+# upset_plot_Q8 <- upset_plot_Q8 %>% 
+#   filter(Appt== 1 | Edit ==1 |Goal==1) %>%
+#   ungroup()
 # Q7_1[Q7_1==""] <- NA
 
 # ### col sums for questions
