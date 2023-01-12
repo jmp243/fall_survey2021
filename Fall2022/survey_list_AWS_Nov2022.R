@@ -12,7 +12,7 @@ library('salesforcer')
 library('lubridate')
 
 getwd()
-setwd("D:/Users/jmpark/Box/Trellis/Program Team/Trellis Metrics Reports/Trellis KPIs/Raw data")
+setwd("D:/Users/jmpark/Box/Trellis/Program Team/Trellis Metrics Reports/Trellis KPIs/Raw data/")
 
 #setwd("~/Trellis Users KPIs")
 # setwd("C:/Users/fkmiller/Desktop/for feb 2022 program kpis/")
