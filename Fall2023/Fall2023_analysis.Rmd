@@ -1,0 +1,161 @@
+---
+title: "Fall2023_Survey_Analysis"
+author: "Jung Mee Park"
+date: "2023-10-19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+# libraries
+library(tidyverse)
+library(readr)
+library(likert)
+library(tidyr)
+```
+
+```{r, include=FALSE}
+# reading in the survey results
+getwd()
+Fall_Survey2023_Oct19 <- read_csv("data/Trellis+Program+Survey+-+Fall+2023_October+19,+2023_09.38.csv")
+
+# delete top two rows
+Fall_Survey2023_Oct19 <- Fall_Survey2023_Oct19 %>% 
+  filter(`Progress-Progress` <= 8)
+
+# remove my test emails
+Fall_Survey2023_Oct19 <- Fall_Survey2023_Oct19 %>% 
+  filter(`RecipientFirstName-Recipient First Name` != "Jung")
+
+# delete unused columns
+Fall_Survey2023_Oct19 <-Fall_Survey2023_Oct19[ , -c(45:49) ] # be careful when you run this
+
+```
+
+```{r, include=FALSE}
+# open SF contact list
+SF_Contacts <- read_csv("data/SF_Contact_list_w_CreatedDate.csv")
+
+# merge survey with contacts
+Fall_Survey2023_Oct19a <- left_join(Fall_Survey2023_Oct19, SF_Contacts, by = join_by("RecipientEmail-Recipient Email" == "Email"))
+
+# check to see if any NA's in NetID field
+Fall_Survey2023_Oct19a  %>% 
+  filter(is.na(NetID)) %>% 
+  tally()
+
+```
+
+```{r, include=FALSE}
+
+
+```
+
+## Key Takeaways
+
+## Demographic Breakdown of Respondents
+```{r}
+# incorporate created date
+# for created date
+head(Fall_Survey2023_Oct19a$`User: Created Date`)
+Fall_Survey2023_Oct19a$CreatedDate <- as.POSIXct(Fall_Survey2023_Oct19a$`User: Created Date`,
+                          format= "%m/%d/%y") 
+
+
+Fall_Survey2023_Oct19a <- Fall_Survey2023_Oct19a %>% 
+  dplyr::mutate(CreatedDate = as.Date(CreatedDate)) # AZ created date added
+
+
+Fall_Survey2023_Oct19a <- Fall_Survey2023_Oct19a %>%
+  mutate(
+    period = case_when(CreatedDate <= "2022-08-01" ~ "More than two semesters",
+                       CreatedDate <= "2023-01-15" ~ "Last semester",
+                       # AZ_created_date <= "2021-12-01" ~ "This semester"
+                       TRUE ~ "This semester"
+    )
+  )
+
+# turn period into an ordered factor
+Fall_Survey2023_Oct19a$period <- factor(Fall_Survey2023_Oct19a$period, 
+                                        levels = c("This semester", "Last semester", "More than two semesters"), 
+                                        ordered = TRUE)
+
+Fall_Survey2023_Oct19a %>% 
+  group_by(period) %>% 
+  count()
+```
+
+```{r}
+# last login for context
+head(Fall_Survey2023_Oct19a$`User: Last Login`)
+Fall_Survey2023_Oct19a$LastLogin <- as.POSIXct(Fall_Survey2023_Oct19a$`User: Last Login`,
+                                                 format= "%m/%d/%y") 
+
+
+Fall_Survey2023_Oct19a <- Fall_Survey2023_Oct19a %>% 
+  dplyr::mutate(LastLogin = as.Date(LastLogin)) # AZ created date added
+
+
+Fall_Survey2023_Oct19a <- Fall_Survey2023_Oct19a %>%
+  mutate(
+    LastLogin_group = case_when(LastLogin <= "2023-08-01" ~ "More than 60 days",
+                                LastLogin <= "2023-09-01" ~ "More than 30 days",
+                       TRUE ~ "Recent"
+    )
+  )
+
+Fall_Survey2023_Oct19a$LastLogin_group <- factor(Fall_Survey2023_Oct19a$LastLogin_group, 
+                                        levels = c("Recent", "More than 30 days", "More than 60 days"), 
+                                        ordered = TRUE)
+
+Fall_Survey2023_Oct19a %>% 
+  group_by(LastLogin_group) %>% 
+  count()
+```
+
+
+```{r, include=FALSE}
+# trim out some unused variables
+Fall_Survey2023_Oct19b <- Fall_Survey2023_Oct19a %>% 
+  select(-`Trellis User`, -`ExternalReference-External Data Reference`, -`DistributionChannel-Distribution Channel`, 
+         -`LocationLatitude-Location Latitude`, -`LocationLongitude-Location Longitude`, -`UserLanguage-User Language`,
+         -`Status-Response Type`, -`IPAddress-IP Address`)
+
+
+```
+What type of product usage is represented?
+```{r}
+# create a longer list based on Features
+longer_Fall_Survey2023_Oct19b <- Fall_Survey2023_Oct19b |>
+  separate_rows(c(`User: Feature-User: Feature`, `RecipientEmail-Recipient Email`), sep = "; ")
+
+# remove the person with NA User: Features
+longer_Fall_Survey2023_Oct19b <-longer_Fall_Survey2023_Oct19b %>% 
+  filter(!is.na(`User: Feature-User: Feature`))
+
+longer_Fall_Survey2023_Oct19b %>% 
+  group_by(`User: Feature-User: Feature`) %>% 
+  count() %>% 
+  ungroup() %>%
+  arrange(desc(n))
+```
+
+```{r}
+# merge in datafile of counts from FKM
+October02_usercounts <- read_csv("data/2023_October02_ACTIVEuser_act_counts.csv")
+
+# remove the n column
+October02_usercounts <-October02_usercounts %>% 
+  select(-n)
+
+# merge count data to short data
+Fall_Survey2023_Oct19c <- Fall_Survey2023_Oct19b %>% 
+  left_join(October02_usercounts, by = join_by("Full Name" == "Name.x"))
+```
+```{r}
+
+```
+
