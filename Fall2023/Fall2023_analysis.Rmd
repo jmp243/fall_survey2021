@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE)
 ```
 
 ```{r, include=FALSE}
@@ -15,12 +15,20 @@ library(tidyverse)
 library(readr)
 library(likert)
 library(tidyr)
+library(scales)
+library("RColorBrewer") 
+library(ggplot2)
+library(forcats)
+library(ComplexUpset)
+library(plyr)
+library(ggplot2)
+
 ```
 
-```{r, include=FALSE}
+```{r}
 # reading in the survey results
 getwd()
-Fall_Survey2023_Oct19 <- read_csv("data/Trellis+Program+Survey+-+Fall+2023_October+19,+2023_09.38.csv")
+Fall_Survey2023_Oct19 <- read_csv("data/Trellis+Program+Survey+-+Fall+2023_October+30,+2023_09.11.csv")
 
 # delete top two rows
 Fall_Survey2023_Oct19 <- Fall_Survey2023_Oct19 %>% 
@@ -30,12 +38,10 @@ Fall_Survey2023_Oct19 <- Fall_Survey2023_Oct19 %>%
 Fall_Survey2023_Oct19 <- Fall_Survey2023_Oct19 %>% 
   filter(`RecipientFirstName-Recipient First Name` != "Jung")
 
-# delete unused columns
-Fall_Survey2023_Oct19 <-Fall_Survey2023_Oct19[ , -c(45:49) ] # be careful when you run this
 
 ```
 
-```{r, include=FALSE}
+```{r, echo=FALSE}
 # open SF contact list
 SF_Contacts <- read_csv("data/SF_Contact_list_w_CreatedDate.csv")
 
@@ -49,15 +55,11 @@ Fall_Survey2023_Oct19a  %>%
 
 ```
 
-```{r, include=FALSE}
-
-
-```
 
 ## Key Takeaways
 
 ## Demographic Breakdown of Respondents
-```{r}
+```{r, echo=FALSE}
 # incorporate created date
 # for created date
 head(Fall_Survey2023_Oct19a$`User: Created Date`)
@@ -71,7 +73,7 @@ Fall_Survey2023_Oct19a <- Fall_Survey2023_Oct19a %>%
 
 Fall_Survey2023_Oct19a <- Fall_Survey2023_Oct19a %>%
   mutate(
-    period = case_when(CreatedDate <= "2022-08-01" ~ "More than two semesters",
+    Period = case_when(CreatedDate <= "2022-08-01" ~ "More than two semesters",
                        CreatedDate <= "2023-01-15" ~ "Last semester",
                        # AZ_created_date <= "2021-12-01" ~ "This semester"
                        TRUE ~ "This semester"
@@ -79,16 +81,31 @@ Fall_Survey2023_Oct19a <- Fall_Survey2023_Oct19a %>%
   )
 
 # turn period into an ordered factor
-Fall_Survey2023_Oct19a$period <- factor(Fall_Survey2023_Oct19a$period, 
+Fall_Survey2023_Oct19a$Period <- factor(Fall_Survey2023_Oct19a$Period, 
                                         levels = c("This semester", "Last semester", "More than two semesters"), 
                                         ordered = TRUE)
 
-Fall_Survey2023_Oct19a %>% 
-  group_by(period) %>% 
-  count()
 ```
 
-```{r}
+```{r, echo=FALSE}
+library(scales)
+
+Fall_Survey2023_Oct19a %>% 
+  # Fall_Survey2023_Oct19a %>% 
+  group_by(Period) %>%
+  dplyr::summarize(count = n()) %>%  # count records
+  # mutate(rel.freq =  scales::percent(n/sum(n), accuracy = 0.1))
+  dplyr::mutate(pct = scales::percent(count/sum(count), accuracy = 0.1)) %>%
+  ungroup()
+
+# Fall_Survey2023_Oct19a %>% 
+#   # Fall_Survey2023_Oct19a %>% 
+#   group_by(Period) %>%
+#   dplyr::summarize(n = n()) %>%  # count records
+#   dplyr::mutate(rel.freq =  scales::percent(n/sum(n), accuracy = 0.1))
+```
+
+```{r, echo=FALSE}
 # last login for context
 head(Fall_Survey2023_Oct19a$`User: Last Login`)
 Fall_Survey2023_Oct19a$LastLogin <- as.POSIXct(Fall_Survey2023_Oct19a$`User: Last Login`,
@@ -110,40 +127,321 @@ Fall_Survey2023_Oct19a <- Fall_Survey2023_Oct19a %>%
 Fall_Survey2023_Oct19a$LastLogin_group <- factor(Fall_Survey2023_Oct19a$LastLogin_group, 
                                         levels = c("Recent", "More than 30 days", "More than 60 days"), 
                                         ordered = TRUE)
+# 
+# Fall_Survey2023_Oct19a %>% 
+#   group_by(LastLogin_group) %>% 
+#   count() 
 
-Fall_Survey2023_Oct19a %>% 
-  group_by(LastLogin_group) %>% 
-  count()
+Fall_Survey2023_Oct19a %>%
+  # filter(Finished == TRUE) %>%
+  group_by(LastLogin_group) %>%
+  dplyr::summarize(count = n()) %>%  # count records
+  # mutate(rel.freq =  scales::percent(n/sum(n), accuracy = 0.1))
+  dplyr::mutate(pct = scales::percent(count/sum(count), accuracy = 0.1)) %>%
+  ungroup()
 ```
 
 
-```{r, include=FALSE}
+```{r, echo=FALSE}
 # trim out some unused variables
 Fall_Survey2023_Oct19b <- Fall_Survey2023_Oct19a %>% 
   select(-`Trellis User`, -`ExternalReference-External Data Reference`, -`DistributionChannel-Distribution Channel`, 
          -`LocationLatitude-Location Latitude`, -`LocationLongitude-Location Longitude`, -`UserLanguage-User Language`,
-         -`Status-Response Type`, -`IPAddress-IP Address`)
+         -`Status-Response Type`, -`IPAddress-IP Address`) 
 
-
+Fall_Survey2023_Oct19b <- as.data.frame(Fall_Survey2023_Oct19b)
 ```
 What type of product usage is represented?
-```{r}
+```{r, echo=FALSE}
 # create a longer list based on Features
 longer_Fall_Survey2023_Oct19b <- Fall_Survey2023_Oct19b |>
-  separate_rows(c(`User: Feature-User: Feature`, `RecipientEmail-Recipient Email`), sep = "; ")
+  separate_rows(c(`User: Feature`, `RecipientEmail-Recipient Email`), sep = "; ")
 
 # remove the person with NA User: Features
 longer_Fall_Survey2023_Oct19b <-longer_Fall_Survey2023_Oct19b %>% 
-  filter(!is.na(`User: Feature-User: Feature`))
+  filter(!is.na(`User: Feature`))
 
-longer_Fall_Survey2023_Oct19b %>% 
-  group_by(`User: Feature-User: Feature`) %>% 
-  count() %>% 
-  ungroup() %>%
-  arrange(desc(n))
+
+Fall_Survey2023_Oct19b <-Fall_Survey2023_Oct19b %>% 
+  dplyr::mutate(dplyr::across(.cols=c(11:14, 23:29),
+                .fns = ~ factor(.x, 
+                                levels = c("Strongly disagree", "Somewhat disagree", 
+                                           "Neither agree nor disagree", 
+                                           "Somewhat agree", "Strongly agree"),
+                                ordered = TRUE)))
+
 ```
 
 ```{r}
+## Rename Q2.1 
+names(Fall_Survey2023_Oct19b)[names(Fall_Survey2023_Oct19b)=="Q2.1_1-Please rate your level of agreement regarding your introduction and training for Trellis. - Trellis staff supported me in my initial adoption of Trellis."
+                              ] <- "Q2.1_1 Trellis staff supported me in my initial adoption of Trellis."
+names(Fall_Survey2023_Oct19b)[names(Fall_Survey2023_Oct19b)=="Q2.1_2-Please rate your level of agreement regarding your introduction and training for Trellis. - The initial training sessions prepared me to use Trellis."
+                              ] <- "Q2.1_2 The initial training sessions prepared me to use Trellis."
+names(Fall_Survey2023_Oct19b)[names(Fall_Survey2023_Oct19b)=="Q2.1_3-Please rate your level of agreement regarding your introduction and training for Trellis. - I am satisfied with my Trellis onboarding experience."
+                              ] <- "Q2.1_3 I am satisfied with my Trellis onboarding experience." 
+names(Fall_Survey2023_Oct19b)[names(Fall_Survey2023_Oct19b)=="Q2.1_4-Please rate your level of agreement regarding your introduction and training for Trellis. - I've had positive interactions with the Trellis team."
+                              ] <- "Q2.1_4 I've had positive interactions with the Trellis team."
+
+names(Fall_Survey2023_Oct19b)
+
+## Rename Q2.3
+names(Fall_Survey2023_Oct19b)[names(Fall_Survey2023_Oct19b)=="Q2.3_1-Which of these tools do you use to get help with Trellis? (select all that apply) - Selected Choice - Technical issue form/ Submitting a support ticket" 
+                              ] <- "Q2.3_1 Technical issue form/ Submitting a support ticket"
+names(Fall_Survey2023_Oct19b)[names(Fall_Survey2023_Oct19b)=="Q2.3_2-Which of these tools do you use to get help with Trellis? (select all that apply) - Selected Choice - Trellis training workshops"
+                              ] <- "Q2.3_2 Trellis training workshops"
+names(Fall_Survey2023_Oct19b)[names(Fall_Survey2023_Oct19b)=="Q2.3_9-Which of these tools do you use to get help with Trellis? (select all that apply) - Selected Choice - On-Screen guided help (Whatfix)"  
+                              ] <- "Q2.3_3 On-Screen guided help (Whatfix)"
+names(Fall_Survey2023_Oct19b)[names(Fall_Survey2023_Oct19b)=="Q2.3_5-Which of these tools do you use to get help with Trellis? (select all that apply) - Selected Choice - Asking my peers"                                                                  
+                              ] <- "Q2.3_4 Asking my peers"
+names(Fall_Survey2023_Oct19b)[names(Fall_Survey2023_Oct19b)=="Q2.3_6-Which of these tools do you use to get help with Trellis? (select all that apply) - Selected Choice - Trellis teams (MS Teams)"                                                         
+                              ] <- "Q2.3_5 Trellis teams (MS Teams)"
+names(Fall_Survey2023_Oct19b)[names(Fall_Survey2023_Oct19b)=="Q2.3_8-Which of these tools do you use to get help with Trellis? (select all that apply) - Selected Choice - Ask Trellis team members directly. Please share who you most often contact below."
+                              ] <- "Q2.3_6 Ask Trellis team members directly"
+names(Fall_Survey2023_Oct19b)[names(Fall_Survey2023_Oct19b)=="Q2.3_8_TEXT-Which of these tools do you use to get help with Trellis? (select all that apply) - Ask Trellis team members directly. Please share who you most often contact below. - Text" 
+                              ] <- "Q2.3_6a Team Member Name"
+names(Fall_Survey2023_Oct19b)[names(Fall_Survey2023_Oct19b)== "Q2.3_7-Which of these tools do you use to get help with Trellis? (select all that apply) - Selected Choice - None of these"
+                              ] <- "Q2.3_7 None of these"
+
+## Rename Q2.4
+names(Fall_Survey2023_Oct19b)[names(Fall_Survey2023_Oct19b)=="Q2.4_1-Please rate your level of agreement with the following statements: - I am familiar with the Trellis resources available to me." 
+                              ] <- "Q2.4_1 I am familiar with the Trellis resources available to me."
+names(Fall_Survey2023_Oct19b)[names(Fall_Survey2023_Oct19b)=="Q2.4_2-Please rate your level of agreement with the following statements: - I can find answers to my questions with Trellis resources."                                                    
+                              ] <- "Q2.4_2 I can find answers to my questions with Trellis resources."
+names(Fall_Survey2023_Oct19b)[names(Fall_Survey2023_Oct19b)=="Q2.4_3-Please rate your level of agreement with the following statements: - I feel supported in my use of Trellis."                                                                        
+                              ] <- "Q2.4_3 I feel supported in my use of Trellis."
+
+## Rename Q3.2
+names(Fall_Survey2023_Oct19b)[names(Fall_Survey2023_Oct19b)=="Q3.2_1-Please rate your level of agreement with the following statements: - I feel comfortable using Trellis." 
+                              ] <- "Q3.2_1 I feel comfortable using Trellis."
+names(Fall_Survey2023_Oct19b)[names(Fall_Survey2023_Oct19b)=="Q3.2_2-Please rate your level of agreement with the following statements: - Trellis makes it easy for me to access the information I need."
+                              ] <- "Q3.2_2 Trellis makes it easy for me to access the information I need."
+
+## Rename Q4.2
+names(Fall_Survey2023_Oct19b)[names(Fall_Survey2023_Oct19b)=="Q4.2_1-Please rate your level of agreement or disagreement with the following statements: - I believe access to the Trellis data allows me to provide better service."  
+                              ] <- "Q4.2_1 I believe access to the Trellis data allows me to provide better service."
+names(Fall_Survey2023_Oct19b)[names(Fall_Survey2023_Oct19b)=="Q4.2_2-Please rate your level of agreement or disagreement with the following statements: - I would recommend Trellis capabilities to someone else." 
+                              ] <- "Q4.2_2 I would recommend Trellis capabilities to someone else."
+
+## Rename Q4.3
+names(Fall_Survey2023_Oct19b)[names(Fall_Survey2023_Oct19b)=="Q4.3-What do you like best about Trellis?"  
+                              ] <- "Q4.3 What do you like best about Trellis?"
+
+## Rename Q5.1
+names(Fall_Survey2023_Oct19b)[names(Fall_Survey2023_Oct19b)=="Q5.1_1-Please check this box if you are interested in participating in future Trellis user experience research. - Yes"                                                                     
+                              ] <- "Q5.1_1 Yes to participating in future Trellis user experience research" 
+
+## Rename Q 3.3 which should be Q5.2
+names(Fall_Survey2023_Oct19b)[names(Fall_Survey2023_Oct19b)=="Q3.3_1-Which part of user experience for online tools is most important? [rank from most important = 1 to least important = 5] - Make it easier to do common, smaller tasks"
+                              ] <- "Q5.2_1 Make it easier to do common, smaller tasks"
+names(Fall_Survey2023_Oct19b)[names(Fall_Survey2023_Oct19b)=="Q3.3_30-Which part of user experience for online tools is most important? [rank from most important = 1 to least important = 5] - Improved shared work with team members"
+                              ] <- "Q5.2_2 Improved shared work with team members"
+names(Fall_Survey2023_Oct19b)[names(Fall_Survey2023_Oct19b)=="Q3.3_31-Which part of user experience for online tools is most important? [rank from most important = 1 to least important = 5] - Make it easier to work with large, more complicated data"
+                              ] <- "Q5.2_3 Make it easier to work with large, more complicated data"
+names(Fall_Survey2023_Oct19b)[names(Fall_Survey2023_Oct19b)=="Q3.3_2-Which part of user experience for online tools is most important? [rank from most important = 1 to least important = 5] - More control over product options" 
+                              ] <- "Q5.2_4 More control over product options"
+names(Fall_Survey2023_Oct19b)[names(Fall_Survey2023_Oct19b)=="Q3.3_3-Which part of user experience for online tools is most important? [rank from most important = 1 to least important = 5] - Bring more Trellis data together in one place" 
+                              ] <- "Q5.2_5 Bring more Trellis data together in one place"
+
+
+```
+```{r}
+# Load in datafile of counts from FKM
+getwd()
+October02_usercounts <- read_csv("data/2023_October02_ACTIVEuser_act_counts.csv")
+
+# remove the n column
+October02_usercounts <-October02_usercounts %>% 
+  select(-n)
+
+# merge count data to short data
+Fall_Survey2023_Oct19c <- Fall_Survey2023_Oct19b %>% 
+  left_join(October02_usercounts, by = join_by("Full Name" == "Name.x"))
+
+# create a longer list based on Features
+longer_Fall_Survey2023_Oct19 <- Fall_Survey2023_Oct19c |>
+  separate_rows(c(`User: Feature-User: Feature`, `RecipientEmail-Recipient Email`), sep = "; ")
+
+# drop some redundant columns
+longer_Fall_Survey2023_Oct19 <- longer_Fall_Survey2023_Oct19 %>% 
+  select(-`StartDate-Start Date`, -`EndDate-End Date`, -`Duration (in seconds)-Duration (in seconds)`, 
+         -`RecipientLastName-Recipient Last Name`, -`RecipientFirstName-Recipient First Name`,
+         -`RecordedDate-Recorded Date`)
+
+# relocate column
+longer_Fall_Survey2023_Oct19 <- longer_Fall_Survey2023_Oct19 %>% 
+  relocate(`User: Feature-User: Feature`, .before = NULL, .after = NULL)
+
+```
+
+### Features used
+```{r, echo=FALSE}
+### Features used
+upset_plot_Features <- Fall_Survey2023_Oct19c %>% 
+  dplyr::select(`ResponseId-Response ID`, `User: Feature-User: Feature`) %>% 
+  dplyr::distinct() 
+
+
+wider_upset_plot_Features <- upset_plot_Features %>%
+  separate_rows(`User: Feature-User: Feature`, sep = "; ") %>%
+  # mutate(`User: Feature-User: Feature` = 1) %>%
+  pivot_wider(names_from = `User: Feature-User: Feature`, values_from = `User: Feature-User: Feature`)
+# # write to CSV for analysis in Tableau
+# write_csv(wider_upset_plot_Features, "Fall2023/data/Merged_Data/Fall2023_wider_upset_plot_Features.csv")
+
+# turn features into binary
+upset_plot_Q15 <- wider_upset_plot_Features %>% 
+  dplyr::mutate(`Marketing Cloud` = ifelse(`Marketing Cloud` == "Marketing Cloud" , 1, 0)) %>% 
+  dplyr::mutate(`External Partners` = ifelse(`External Partners` ==  "External Partners", 1, 0)) %>% 
+  dplyr::mutate(`Case Notes` = ifelse(`Case Notes` == "Case Notes", 1, 0)) %>% 
+  dplyr::mutate(`Custom Forms` = ifelse(`Custom Forms` == "Custom Forms" , 1, 0)) %>% 
+  dplyr::mutate(`Plans` = ifelse(`Plans` == "Plans"  , 1, 0)) %>% 
+  dplyr::mutate(`Scheduling` = ifelse(`Scheduling` ==  "Scheduling", 1, 0)) %>% 
+  dplyr::mutate(`Events` = ifelse(`Events` ==  "Events"   , 1, 0)) %>% 
+  dplyr::mutate(`Service Desk` = ifelse(`Service Desk` ==  "Service Desk"   , 1, 0)) %>% 
+  dplyr::mutate(`Texting` = ifelse(`Texting` == "Texting", 1, 0)) %>% 
+  dplyr::mutate(`Email to Case` = ifelse(`Email to Case` == "Email to Case" , 1, 0)) %>% 
+  dplyr::mutate(`Chat to Case` = ifelse(`Chat to Case` == "Chat to Case"  , 1, 0)) 
+
+set_vars15 = colnames(upset_plot_Q15)[2:12]
+# merge in Period, last login or other
+q15_addendum <- Fall_Survey2023_Oct19c %>% 
+  select(`ResponseId-Response ID`, Period, LastLogin_group, `Parent Organization`)
+
+upset_plot_Q15 <- upset_plot_Q15 %>% 
+  left_join(q15_addendum)
+upset_plot_Q15 %>% print(n = nrow(upset_plot_Q15))
+
+Q15_upset_plot <- ComplexUpset::upset(data = upset_plot_Q15, intersect = set_vars15, )
+Q15_upset_plot
+
+## fancier upset plot for 15
+# fill the bars
+
+upset(
+  upset_plot_Q15,
+  set_vars15,
+  # set_sizes = FALSE,
+  # min_size = 3,
+  min_degree=1,
+  base_annotations=list(
+    'Intersection size'=intersection_size(
+      # counts=FALSE,
+      mapping=aes(fill=Period)
+    ) + scale_fill_manual(values=c(
+      'This semester'='#66C2A5', 'Last semester'='#FC8D62',
+      'More than two semesters'='#8DA0CB'
+    ))
+    +  labs(title = "Features used")
+  ),
+  width_ratio=0.1
+)
+```
+Count of Features Used
+```{r, echo=FALSE}
+# multiselect for feature
+Q15 <- upset_plot_Q15 %>%
+  pivot_longer(cols = c(
+    "Marketing Cloud",        "External Partners",      "Case Notes" ,           
+    "Custom Forms"    ,       "Plans"             ,     "Scheduling"  ,           "Events"  ,              
+    "Service Desk"     ,      "Texting"            ,    "Email to Case",          "Chat to Case"  
+  ),
+  names_to = "features",
+  values_to = "response") %>%
+  # drop_na("Tech Issues Form") %>%
+  distinct() %>%
+  dplyr::select(Period, features, response, `ResponseId-Response ID`)
+
+
+# # create a table to calculate percentages
+Q15_pct <- Q15 %>% 
+  drop_na() %>%
+  group_by(Period, features, `ResponseId-Response ID`) %>%
+  dplyr::summarize(count = n()) %>%  # count records by species
+  dplyr::mutate(pct = scales::percent(count/sum(count), accuracy = 0.1)) 
+
+
+Q15_pct
+
+Q15_graph <- 
+  ggplot(Q15_pct, aes(features, count)) +
+  geom_bar(aes(fill = Period), stat='identity') +
+  # theme(legend.position="none") +
+  scale_x_discrete(guide = guide_axis(n.dodge=2))+
+  xlab("") + 
+  ylab("Count") + 
+  geom_text(
+    aes(label = after_stat(y), group = features), 
+    stat = 'summary', fun = sum, vjust = -0.5
+  ) +
+  scale_fill_brewer(palette = "Set2") 
+
+Q15_graph <- Q15_graph + labs(title = "What features do you have access to",
+                                subtitle = "from metadata") + 
+  guides(fill=guide_legend(title='Initiation Period'))
+
+
+print(Q15_graph) #1150 times 450
+
+```
+
+## Question 
+Question 2.1
+```{r, echo=FALSE}
+
+# #### set up likert questions####
+# names(Fall_Survey2023_Oct19b)
+# Fall_Survey2023_Oct19b <- Fall_Survey2023_Oct19b %>% 
+#   mutate(across(.cols=c(11:14, 23:29),
+#                 .fns = ~ factor(.x, 
+#                                 levels = c("Strongly disagree", "Somewhat disagree", 
+#                                            "Neither agree nor disagree", 
+#                                            "Somewhat agree", "Strongly agree"),
+#                                 ordered = TRUE)))
+# 
+# likert analysis
+# Q 2.1
+Fall_Survey2023_Oct19b <- as.data.frame(Fall_Survey2023_Oct19b)
+
+q2_plot <- plot(likert(Fall_Survey2023_Oct19b[,11:14]), ordered = FALSE,
+                auto.key=list(columns = 2)) # this looks good. but add more to it. 
+
+
+q2_plot <- q2_plot + labs(title = "Support and Adoption of Trellis",
+                          subtitle = "Question 2.1 - full data") 
+
+print(q2_plot) # 1100 by 300
+
+```
+Question 2.4
+```{r, echo=FALSE}
+# q2.4
+Fall_Survey2023_Oct19b <- as.data.frame(Fall_Survey2023_Oct19b)
+q2_4plot <- plot(likert(Fall_Survey2023_Oct19b[,23:25]), 
+                 ordered = FALSE,
+                 wrap= 40,
+                 auto.key=list(columns = 2)
+                 ) # this looks good. but add more to it. 
+
+q2_4plot <- q2_4plot + labs(title = "Ongoing Support for Trellis",
+                            subtitle = "Question 2.4 - full data") 
+
+print(q2_4plot) # dimension 980 by 300
+```
+Question 3.2
+```{r}
+Fall_Survey2023_Oct19b <- as.data.frame(Fall_Survey2023_Oct19b)
+
+q3_2plot <- plot(likert(Fall_Survey2023_Oct19b[,26:27]), ordered = TRUE, wrap= 40) # this looks good. but add more to it. 
+
+q3_2plot <- q3_2plot + labs(title = "Ease of Using Trellis",
+                            subtitle = "Question 3.2 - full data") 
+
+print(q3_2plot)
+```
+
+
+```{r, echo=FALSE}
 # merge in datafile of counts from FKM
 October02_usercounts <- read_csv("data/2023_October02_ACTIVEuser_act_counts.csv")
 
@@ -155,7 +453,22 @@ October02_usercounts <-October02_usercounts %>%
 Fall_Survey2023_Oct19c <- Fall_Survey2023_Oct19b %>% 
   left_join(October02_usercounts, by = join_by("Full Name" == "Name.x"))
 ```
-```{r}
+```{r, echo=FALSE}}
+# analyzing name data
+# column 22
+Col22_analysis <- Fall_Survey2023_Oct19c %>%
+  select(`ResponseId-Response ID`, Period, LastLogin_group, `Q2.3_6a Team Member Name`) %>% 
+  dplyr::rename(team_member = `Q2.3_6a Team Member Name`) %>% 
+  separate_rows(team_member)
+
+Col22_analysis_original <- Fall_Survey2023_Oct19c %>%
+  select(`ResponseId-Response ID`, `Q2.3_6a Team Member Name`) 
+
+Col22_analysis <- left_join(Col22_analysis, Col22_analysis_original)
+```
+
+```{r, include=FALSE, echo=FALSE}}
+
 
 ```
 
