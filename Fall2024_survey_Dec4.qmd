@@ -1,0 +1,1634 @@
+---
+title: "Fall 2024 Survey Results"
+date: "`r Sys.Date()`"
+toc: true
+number-sections: true
+# format: 
+#   html:
+#     prefer-html: true
+#   pdf: 
+#     toc: true
+#     number-sections: true
+#   docx: default
+---
+
+# Key Takeaways
+-   Users have overwhelmingly positive interactions with the Trellis team (80%)
+-   The % of users feeling supported using Trellis went slightly down from 78% in 2023 to 75% in 2024
+-   More users feel comfortable using Trellis up from 79% in 2023 to 85% in 2024
+-   more users agree that Trellis makes it easy for them to access the information they need up from 60% in 2023 to 69% in 2024
+-   Fewer users would recommend Trellis to others down from 63% in 2023 to 57% in 2024
+
+```{r, echo=FALSE, warning=FALSE, message = FALSE,  results = 'hide'}
+# Load Libraries
+library(tidyverse)
+library(readr)
+library(likert)
+library(dplyr)
+library(stringr)
+library(tidyr)
+library(knitr)
+library(RColorBrewer) 
+library(ComplexUpset)
+library(RankAggreg)
+library(e1071)
+library(forcats)
+library(stringr)
+library(scales)
+library(knitr)
+library(kableExtra)
+library(gt)
+```
+
+```{r, echo=FALSE, warning=FALSE,results='hide'}
+#| label: read csv
+# reading in the survey results
+#| echo: false
+# Step 1: read in the survey
+Fall_Survey2024_Oct15 <-read.csv("~/Documents/Trellis/Survey/Fall2024/Data/Trellis+Program+Survey+-+Fall+2024_December+2,+2024_10.19.csv", header = F)
+
+# Step 2: Combine the first two rows to create a new header
+new_header <- paste(Fall_Survey2024_Oct15[1, ], Fall_Survey2024_Oct15[2, ], sep = "_")  # Customize the separator if needed
+
+# Step 3: Remove the first two rows from the data
+df <- Fall_Survey2024_Oct15[-c(1, 2), ]
+
+# Step 4: Assign the new header to the dataframe
+colnames(df) <- new_header
+```
+
+```{r, echo=FALSE, warning=FALSE,results='hide'}
+#| label: filter data
+# Remove the first row that isn't data
+df <- df[-1, ]
+
+```
+
+```{r, echo=FALSE, warning=FALSE, message = FALSE, results='hide'}
+#| label: merge data
+# Merge in data from Salesforce with last login information
+SF_Contacts <- read_csv("~/Documents/Trellis/Survey/Fall2024/Data/fall2024_survey_list_lastLogin.csv") # add whatfix users
+
+# Left join to maintain everyone who answered the survey
+df <- df %>% 
+  left_join(SF_Contacts, by = c("RecipientEmail_Recipient Email" = "Email")) 
+```
+
+```{r, echo=FALSE, warning=FALSE, message = FALSE, results='hide'}
+#| label: add whatfix
+End_users_in_WF_last_90 <- read_csv("~/Documents/Trellis/Survey/Fall2024/Data/End-users-in--WF-last-90---20241018-011250.csv")
+
+# Add a column that indicates whether this is a whatfix user
+End_users_in_WF_last_90$WhatFix_user <- "1"
+
+# rename variables
+names(End_users_in_WF_last_90)[names(End_users_in_WF_last_90)=="Total"] <- "whatfix_total"
+names(End_users_in_WF_last_90)[names(End_users_in_WF_last_90)=="Date"] <- "whatfix_date"
+
+# Left join to maintain all the users in the survey dataset when I merge in the whatfix users data
+df <- df %>% 
+          left_join(End_users_in_WF_last_90, by = c("RecipientEmail_Recipient Email" = "User Id"))
+
+```
+
+```{r, echo=FALSE, warning=FALSE,results='hide'}
+#| label: fix dates
+# convert created date from the salesforce to POSIXct
+df$CreatedDate <- as.POSIXct(df$`Created Date`,
+                          format= "%m/%d/%y") 
+df$whatfix_date <- as.POSIXct(df$whatfix_date,
+                          format= "%m/%d/%y") 
+#names(df)
+```
+
+```{r, echo=FALSE, warning=FALSE,results='hide'}
+#| label: remove unused columns
+#| 
+# remove columns that are not used for the final visual
+df2 <- df %>%
+  select(-c(
+    "allproducts_allproducts", 
+    "counter.Events_counter.Events", 
+    "counter.External.Partners_counter.External.Partners", 
+    "counter.Marketing...SF_counter.Marketing...SF", 
+    "counter.Reports_counter.Reports", 
+    "counter.SAFER_counter.SAFER", 
+    "counter.Scheduling.Notes_counter.Scheduling.Notes", 
+    "counter.Service.Desk_counter.Service.Desk", 
+    "CreatedDate_CreatedDate", 
+    "Emplid__c_Emplid__c", 
+    "Events_Events", 
+    "ExternalPartners_ExternalPartners", 
+    "hed__Account__r.Name_hed__Account__r.Name", 
+    "MarketingSF_MarketingSF", 
+    "Name_Name", 
+    "NetID__c.x_NetID__c.x", 
+    "Primary_Department__r.Name_Primary_Department__r.Name", 
+    "Profile.Name_Profile.Name", 
+    "User: Feature_User: Feature", 
+    "SchedulingNotes_SchedulingNotes", 
+    "ServiceDesk_ServiceDesk", 
+    "UserRole.Name_UserRole.Name", 
+    "Create New Field or Choose From Dropdown..._Create New Field or Choose From Dropdown...", 
+    "Link_Link"
+  ))
+```
+
+```{r, echo=FALSE, warning=FALSE,results='hide'}
+#| label: rename questions 2.1
+# Renaming questions
+## Rename Q2.1 
+names(df2)[names(df2)=="Q2.1_1_Please rate your level of agreement regarding your introduction and training for Trellis. - Trellis staff supported me in my initial adoption of Trellis."
+                              ] <- "Trellis staff supported me in my initial adoption of Trellis."
+names(df2)[names(df2)=="Q2.1_2_Please rate your level of agreement regarding your introduction and training for Trellis. - The initial training sessions prepared me to use Trellis."
+                              ] <- "Initial training sessions prepared me."
+names(df2)[names(df2)=="Q2.1_3_Please rate your level of agreement regarding your introduction and training for Trellis. - I am satisfied with my Trellis onboarding experience."
+                              ] <- "I am satisfied with my Trellis onboarding." 
+names(df2)[names(df2)=="Q2.1_4_Please rate your level of agreement regarding your introduction and training for Trellis. - I've had positive interactions with the Trellis team."
+                              ] <- "I've had positive interactions with the Trellis team."
+```
+
+```{r, echo=FALSE, warning=FALSE,results='hide'}
+#| label: rename questsions 2.3
+
+## Rename Q2.3
+names(df2)[names(df2)=="Q2.3_1_What do you use to get help with Trellis? (select all that apply) - Selected Choice - Technical issue form/ Submitting a support ticket" 
+                              ] <- "Technical issue form/ Submitting a support ticket"
+names(df2)[names(df2)=="Q2.3_2_What do you use to get help with Trellis? (select all that apply) - Selected Choice - Trellis training workshops"
+                              ] <- "Trellis training workshops"
+names(df2)[names(df2)=="Q2.3_9_What do you use to get help with Trellis? (select all that apply) - Selected Choice - On-Screen guided help (Whatfix)"  
+                              ] <- "On-Screen guided help (Whatfix)"
+names(df2)[names(df2)=="Q2.3_5_What do you use to get help with Trellis? (select all that apply) - Selected Choice - Asking my peers "                                                                  
+                              ] <- "Asking my peers"
+names(df2)[names(df2)=="Q2.3_6_What do you use to get help with Trellis? (select all that apply) - Selected Choice - Trellis teams (MS Teams)"                                                         
+                              ] <- "Trellis teams (MS Teams)"
+names(df2)[names(df2)=="Q2.3_12_What do you use to get help with Trellis? (select all that apply) - Selected Choice - Events ChatBot (Trellis MS Teams)"                                                         
+                              ] <- "Events ChatBot (Trellis MS Teams)"
+names(df2)[names(df2)=="Q2.3_8_What do you use to get help with Trellis? (select all that apply) - Selected Choice - Ask Trellis team members directly. Please share who you most often contact below."
+                              ] <- "Ask Trellis team members directly"
+names(df2)[names(df2)=="Q2.3_8_TEXT_What do you use to get help with Trellis? (select all that apply) - Ask Trellis team members directly. Please share who you most often contact below. - Text" 
+                              ] <- "Team Member Name"
+names(df2)[names(df2)== "Q2.3_7_What do you use to get help with Trellis? (select all that apply) - Selected Choice - None of these"
+                              ] <- "None of these"
+
+df2<- df2 %>% relocate(`Team Member Name`, .after = `Ask Trellis team members directly`)
+```
+
+```{r, echo=FALSE, warning=FALSE,results='hide'}
+#| label: rename questsions 2.5
+
+# Rename question 2.5_2 How do you stay up to date with new Trellis releases? 
+names(df2)[names(df2)=="Q2.5_2_How do you stay up to date with new Trellis releases? (select all that apply) - Trellis Digest"
+                              ] <- "Trellis Digest"
+names(df2)[names(df2)=="Q2.5_9_How do you stay up to date with new Trellis releases? (select all that apply) - In-App Notifications (through Whatfix)" 
+                              ] <- "In-App Notifications (through Whatfix)"
+names(df2)[names(df2)== "Q2.5_5_How do you stay up to date with new Trellis releases? (select all that apply) - Release Notes"
+                              ] <- "Release Notes"
+names(df2)[names(df2)=="Q2.5_6_How do you stay up to date with new Trellis releases? (select all that apply) - Watch Trellis Grow Demos (previously Sprint Demos)"
+                              ] <- "Watch Trellis Grow Demos"
+names(df2)[names(df2)=="Q2.5_12_How do you stay up to date with new Trellis releases? (select all that apply) - Other members of my team inform me of changes" 
+                              ] <- "Other members of my team"
+names(df2)[names(df2)== "Q2.5_7_How do you stay up to date with new Trellis releases? (select all that apply) - Trellis staff"
+                              ] <- "Trellis staff"
+names(df2)[names(df2)== "Q2.5_8_How do you stay up to date with new Trellis releases? (select all that apply) - I do not feel up to date about new Trellis releases."
+                              ] <- "I do not feel up to date"
+```
+
+```{r, echo=FALSE, warning=FALSE,results='hide'}
+#| label: rename questsions 2.4 and 3.2
+## Rename Q2.4 please rate your level of agreement
+names(df2)[names(df2)=="Q2.4_1_Please rate your level of agreement with the following statements: - I am familiar with the Trellis resources available to me." 
+                              ] <- "Familiar with the Trellis resources available"
+names(df2)[names(df2)=="Q2.4_2_Please rate your level of agreement with the following statements: - I can find answers to my questions with Trellis resources."
+                              ] <- "Can find answers to my questions with Trellis resources"
+names(df2)[names(df2)=="Q2.4_3_Please rate your level of agreement with the following statements: - I feel supported in my use of Trellis."
+                              ] <- "Feel supported in my use of Trellis"
+
+## Rename Q3.2
+names(df2)[names(df2)=="Q3.2_1_Please rate your level of agreement with the following statements: - I feel comfortable using Trellis."  
+                              ] <- "I feel comfortable using Trellis."
+names(df2)[names(df2)=="Q3.2_2_Please rate your level of agreement with the following statements: - Trellis makes it easy for me to access the information I need." 
+                              ] <- "Trellis makes it easy for me to access the information I need."
+
+```
+
+```{r, echo=FALSE, warning=FALSE,results='hide'}
+#| label: rename questsions 4.2
+## Rename Q4.2
+names(df2)[names(df2)=="Q4.2_1_Please rate your level of agreement or disagreement with the following statements: - Trellis data allows me to provide better service."  
+                              ] <- "I believe access to the Trellis data allows me to provide better service."
+names(df2)[names(df2)=="Q4.2_2_Please rate your level of agreement or disagreement with the following statements: - I would recommend Trellis to someone else." 
+                              ] <- "I would recommend Trellis capabilities to someone else."
+
+## Rename Q4.3
+names(df2)[names(df2)=="Q4.3_What feedback would you like to give the Trellis team?"  
+                              ] <- "Open Feedback"
+```
+
+```{r, echo=FALSE, warning=FALSE,results='hide'}
+#| label: rename questsions 3.3
+## Rename Q5.1
+names(df2)[names(df2)=="Q5.1_1_Please check this box if you are interested in participating in future Trellis product research. - Yes"                                                                     
+                             ] <- "Yes to participating in user experience research" 
+
+## Rename Q 3.3 which should be Q5.2
+# renamed in 2024
+names(df2)[names(df2)=="Q3.3_1_What is most important to you, when you use Trellis? [rank from most important = 1 to least important = 4] - Ease of completing common tasks"
+                              ] <- "Ease of completing common tasks"
+names(df2)[names(df2)=="Q3.3_30_What is most important to you, when you use Trellis? [rank from most important = 1 to least important = 4] - Ability to share work with team members"
+                              ] <- "Ability to share work with team members"
+names(df2)[names(df2)=="Q3.3_2_What is most important to you, when you use Trellis? [rank from most important = 1 to least important = 4] - Complete tasks as quickly as possible"
+                              ] <- "Complete tasks as quickly as possible"
+names(df2)[names(df2)=="Q3.3_3_What is most important to you, when you use Trellis? [rank from most important = 1 to least important = 4] - Access more data in one place"
+                              ] <- "Access more data in one place"
+
+```
+
+```{r, echo=FALSE, warning=FALSE,results='hide'}
+#| label: create period
+# Time as length of service
+# Period is calculated based on the length of service based on when the user created a salesforce account
+
+df2 <- df2 %>% 
+  dplyr::mutate(CreatedDate = as.Date(`Created Date`)) # AZ created date added
+
+df2 <- df2 %>%
+  mutate(
+    Period = case_when(CreatedDate <= "2023-08-01" ~ "More than two semesters",
+                       CreatedDate <= "2024-01-15" ~ "Last semester",
+                       TRUE ~ "This semester"
+    )
+  )
+
+df2$Period <- factor(df2$Period, levels = c("This semester", "Last semester", "More than two semesters"), ordered = TRUE)
+```
+
+```{r, echo=FALSE, warning=FALSE,results='hide'}
+#| label: create last login group
+# Last login for context
+
+df2$LastLogin <- as.POSIXct(df2$`User: Last Login`, format= "%m/%d/%y") 
+
+
+df2 <- df2 %>% 
+  dplyr::mutate(LastLogin = as.Date(LastLogin)) # AZ created date added
+
+
+df2 <- df2 %>%
+  mutate(
+    LastLogin_group = case_when(LastLogin <= "2024-08-01" ~ "More than 60 days",
+                                LastLogin <= "2024-09-01" ~ "More than 30 days",
+                       # AZ_created_date <= "2021-12-01" ~ "This semester"
+                       TRUE ~ "Recent"
+    )
+  )
+
+df2$LastLogin_group <- factor(df2$LastLogin_group, levels = c("Recent", "More than 30 days", "More than 60 days"), 
+                                        ordered = TRUE)
+```
+
+# Grouping Features
+
+15 different features were classified into 4 different groups based on thematic characteristics. 
+
+* (Group 1) Events and Comm - Events, Paid Events, MC, Group Comm, and Texting 
+* (Group 2) Advising - Scheduling, Service Desk, Plans, Case Notes, Chat to Case, Email to Case, Custom Forms, and Early Progress Reports 
+* (Group 3) External Partners - External Partners
+* (Group 4) Program Management - Program Management
+
+```{r, echo=FALSE, warning=FALSE}
+#| label: create feature groups
+# The users have access to 15 different features. Scheduling and case notes are the most common. The groupings were created for visual ease. 
+
+### UPSET PLOT for Features used
+upset_plot_Features <- df2 %>% 
+  dplyr::select(`ResponseId_Response ID`, `User: Feature`) %>% 
+  dplyr::distinct()
+
+wider_upset_plot_Features <- upset_plot_Features %>%
+  separate_rows(`User: Feature`, sep = "; ") %>%
+  pivot_wider(names_from = `User: Feature`, values_from = `User: Feature`)
+
+# turn features into binary
+upset_plot_Q15 <- wider_upset_plot_Features %>% 
+  dplyr::mutate(`Marketing Cloud` = ifelse(`Marketing Cloud` == "Marketing Cloud" , 1, 0)) %>% 
+  dplyr::mutate(`External Partners` = ifelse(`External Partners` ==  "External Partners", 1, 0)) %>% 
+  dplyr::mutate(`Case Notes` = ifelse(`Case Notes` == "Case Notes", 1, 0)) %>% 
+  dplyr::mutate(`Custom Forms` = ifelse(`Custom Forms` == "Custom Forms" , 1, 0)) %>% 
+  dplyr::mutate(`Plans` = ifelse(`Plans` == "Plans"  , 1, 0)) %>% 
+  
+  dplyr::mutate(`Scheduling` = ifelse(`Scheduling` ==  "Scheduling", 1, 0)) %>% 
+  dplyr::mutate(`Events` = ifelse(`Events` ==  "Events", 1, 0)) %>% 
+  dplyr::mutate(`Paid Events` = ifelse(`Paid Events` ==  "Paid Events", 1, 0)) %>% 
+  dplyr::mutate(`Early Progress Reports` = ifelse(`Early Progress Reports` ==  "Early Progress Reports", 1, 0)) %>% 
+  dplyr::mutate(`Service Desk` = ifelse(`Service Desk` ==  "Service Desk"   , 1, 0)) %>% 
+  
+  dplyr::mutate(`Texting` = ifelse(`Texting` == "Texting", 1, 0)) %>% 
+  dplyr::mutate(`Email to Case` = ifelse(`Email to Case` == "Email to Case" , 1, 0)) %>% 
+  dplyr::mutate(`Chat to Case` = ifelse(`Chat to Case` == "Chat to Case"  , 1, 0)) %>% 
+  dplyr::mutate(`Program Management` = ifelse(`Program Management` == "Program Management"  , 1, 0)) %>% 
+  dplyr::mutate(`Group Communication` = ifelse(`Group Communication` == "Group Communication"  , 1, 0)) 
+
+# Subset the data from upset plots to make a table 
+# Users can have membership into more than one group
+# if the user has at least one of these features then include them with this group
+grouped_features_data <- upset_plot_Q15 %>% 
+  dplyr::mutate(
+    Group_2_Events_Comm = ifelse(`Events` == 1 | `Paid Events` == 1 | `Marketing Cloud` == 1 | `Texting` == 1 | `Group Communication` == 1, 1, 0),
+    Group_1_Advising = ifelse(`Scheduling` == 1 | `Service Desk` == 1 | `Plans` == 1 | `Case Notes` == 1 | `Chat to Case` == 1 | `Custom Forms` == 1 | `Early Progress Reports` == 1 | `Email to Case` == 1, 1, 0),
+    Group_3_External_Partners = ifelse(`External Partners` == 1, 1, 0),
+    Group_4_Program_Management = ifelse(`Program Management` == 1, 1, 0)
+  )
+
+```
+
+## Table 1 of Users' Features
+
+```{r, echo=FALSE,warning=FALSE, results='hide',fig.keep='all', message=FALSE}
+#| label: merge features data
+
+df2 <- df2 %>% 
+  left_join(grouped_features_data)
+
+```
+
+```{r, echo=FALSE,warning = FALSE, fig.keep='all'}
+#| label: rename Feature Groups
+
+# Subsetting the data based on the features groupings to create a table.
+Features_pct_data <- df2 %>%
+  select(Group_1_Advising, Group_2_Events_Comm, Group_3_External_Partners, Group_4_Program_Management, `ResponseId_Response ID`) %>%
+  pivot_longer(cols = c("Group_1_Advising", "Group_2_Events_Comm", "Group_3_External_Partners", "Group_4_Program_Management"), 
+               names_to = "Feature_Group", values_to = "Response") %>%
+  filter(!is.na(Response))  # Remove NA values
+# "Group_1_Advising", "Group_2_Events_Comm", "Group_3_External_Partners", "Group_4_Program_Management"
+
+# Rename the group names as it would appear in the table
+Features_pct_data$Feature_Group <- gsub("Group_1_Advising","Advising Group",
+                                        Features_pct_data$Feature_Group)
+Features_pct_data$Feature_Group <- gsub("Group_2_Events_Comm","Events & Communications",
+                                        Features_pct_data$Feature_Group)
+Features_pct_data$Feature_Group <- gsub("Group_3_External_Partners","External Partners",
+                                        Features_pct_data$Feature_Group)
+Features_pct_data$Feature_Group <- gsub("Group_4_Program_Management","Program Management",
+                                        Features_pct_data$Feature_Group)
+```
+
+```{r, echo=FALSE,results='hide', warning=FALSE}
+#| label: Table 1 Features Used
+
+# Count distinct response ID's so that the n = would be accurate
+Features_responseID_count <- Features_pct_data%>%
+  select(Response, `ResponseId_Response ID`) %>%
+  distinct() %>%  # Ensure unique rows based on both columns
+  group_by(`ResponseId_Response ID`) %>%
+  summarise(distinct_responses = n_distinct(`ResponseId_Response ID`)) %>%  # Count distinct responses per Response ID
+  pull(distinct_responses)
+
+# Calculate counts and percentages for each Feature_Group
+Features_pct <- Features_pct_data %>%
+  dplyr::select(`ResponseId_Response ID`, Feature_Group) %>% 
+  distinct() %>% 
+  group_by(Feature_Group) %>%
+  dplyr::summarise(count = dplyr::n()) %>%
+  mutate(pct = percent(count / sum(count), accuracy = 0.1))
+
+
+# Create formatted table 1
+Features_pct %>%
+  arrange(desc(count)) %>%  # Sort by frequency descending
+  as.data.frame() %>%
+  kable("html",
+        col.names = c("Feature Group", "Responses", "Percentage"),
+        align = c("l", "c", "c"),  # Left align text, center numbers
+        escape = FALSE,
+        caption = "Table 1: Feature Groups of Users") %>%
+  kable_paper(bootstrap_options = c("striped", "hover"),
+              full_width = FALSE,
+              font_size = 14) %>%
+  kable_styling(position = "center",
+                latex_options = c("HOLD_position")) %>%
+  column_spec(1, width = "15em", bold = TRUE) %>%
+  column_spec(2, width = "8em") %>%
+  column_spec(3, width = "8em") %>%
+  row_spec(0, bold = TRUE, color = "black", background = "#f8f9fa") %>%
+  footnote(
+    general = paste("Note: Based on", sum(Features_responseID_count), "total responses."),
+    general_title = "",
+    footnote_as_chunk = TRUE,
+    fixed_small_size = TRUE
+  )
+
+```
+
+There were 303 respondents for the survey. Nearly 50% (208) users were part of the Advising Group and 45.5% (188) used Trellis for Events and Communications.
+
+
+```{r, echo=FALSE,results=FALSE, warning=FALSE, message=FALSE, }
+#| label: rename group and whatfix values
+# Adding variables to Features dataset
+q15_addendum <- df2 %>% 
+  select(`ResponseId_Response ID`, Period,  LastLogin_group, `Parent Organization`, WhatFix_user) %>% 
+  dplyr::mutate(
+    WhatFix_user = dplyr::recode(WhatFix_user, `1` = "Whatfix", .missing = "Basic"))
+
+upset_plot_Q15 <- grouped_features_data  %>% 
+  left_join(q15_addendum) %>% 
+  distinct()
+upset_plot_Q15 <- upset_plot_Q15 %>%
+  dplyr::mutate(`Group 2 Events Comm` = ifelse(Group_2_Events_Comm != "", 1, 0)) %>% 
+  dplyr::mutate(`Group 1 Advising` = ifelse(Group_1_Advising != "", 1, 0)) %>% 
+  dplyr::mutate(`Group 3 Ext Partners` = ifelse(Group_3_External_Partners != "", 1, 0)) %>% 
+  dplyr::mutate(`Group 4 Prog Management` = ifelse(Group_4_Program_Management != "", 1, 0)) 
+
+```
+
+# Visual Analysis
+
+## Fig. 1 - Upset Plot of Users Based on Features
+
+```{r, echo=FALSE,results=FALSE, warning=FALSE, fig.keep='all', message=FALSE}
+#| label: Upset plot for Features
+
+# Create a dummy dataframe for the legend
+legend_data <- data.frame(
+  Group = c("Events and Comm", "Advising", "Ext Partners", "Prog Mgmt"),
+  Color = c("blue", "orange", "purple", "pink")
+)
+
+set_vars15 <- colnames(upset_plot_Q15)[2:16]
+
+# Generate the upset plot with a legend
+features_upset_plot <- ComplexUpset::upset(
+  data = upset_plot_Q15,
+  intersect = set_vars15,          # Columns for the upset plot
+  set_sizes = FALSE,               # Hide set sizes
+  name = "Features Used",          # Name for the upset plot
+  min_size = 2,                    # Minimum intersection size
+  min_degree = 1,                  # Minimum degree of intersections
+      base_annotations=list('Intersection size'=intersection_size(counts=FALSE)),
+  # themes = upset_themes, 
+    themes = upset_modify_themes(
+        list('intersections_matrix'=theme(text=element_text(size=7)),
+          'intersections_matrix'=theme(axis.text.y=element_text(size=7)))
+    ), 
+  # themes = upset_themes,           # Apply custom themes
+  queries = list(
+    upset_query(
+      intersect = c('Events', 'Marketing Cloud'),
+      color = 'red',
+      fill = 'red',
+      only_components = c('intersections_matrix', 'Intersection size')
+    ),
+    upset_query(set = 'Events', color = 'blue'),
+    upset_query(set = 'Paid Events', color = 'blue'),
+    upset_query(set = 'Marketing Cloud', color = 'blue'),
+    upset_query(set = 'Group Communication', color = 'blue'),
+    upset_query(set = 'Texting', color = 'blue'),
+    upset_query(set = 'Scheduling', color = 'orange'),
+    upset_query(set = 'Service Desk', color = 'orange'),
+    upset_query(set = 'Plans', color = 'orange'),
+    upset_query(set = 'Case Notes', color = 'orange'),
+    upset_query(set = 'Chat to Case', color = 'orange'),
+    upset_query(set = 'Custom Forms', color = 'orange'),
+    upset_query(set = 'Early Progress Reports', color = 'orange'),
+    upset_query(set = 'Email to Case', color = 'orange'),
+    upset_query(set = 'External Partners', color = 'purple'),
+    upset_query(set = 'Program Management', color = 'pink')
+  ),
+  width_ratio = 0.5                # Correctly placed here
+) +
+# Add custom legend using ggplot
+geom_point(
+  data = legend_data,
+  aes(x = 1, y = Group, color = Group),
+  size = 2, inherit.aes = FALSE
+) +
+scale_color_manual(
+  values = setNames(
+    legend_data$Color,
+    legend_data$Group
+  ),
+  name = "Grouped Features"
+)
+
+# Print the plot
+print(features_upset_plot)
+
+```
+
+```{r, echo=FALSE, warning=FALSE}
+# Save the plot as a PNG file
+ggsave(
+  filename = "features_upset_plot.png", # File name and format
+  plot = features_upset_plot,           # The plot object
+  width = 10,                     # Width in inches
+  height = 8,                     # Height in inches
+  dpi = 300                       # Resolution in dots per inch
+)
+
+```
+
+
+```{r, echo=FALSE,results='hide', warning=FALSE, message=FALSE}
+#| label: grouped features data
+
+# Subset data for created tables and visuals for the how do you stay informed with Trellis question
+upset_data_informed2 <- df2 %>% 
+  dplyr::select(
+    `ResponseId_Response ID`,
+    `Trellis staff`,                        
+    `Trellis Digest`,              
+    `In-App Notifications (through Whatfix)`,
+    `Release Notes`, 
+    `Watch Trellis Grow Demos`, 
+    `Other members of my team`, 
+    `I do not feel up to date`,
+    Period, WhatFix_user) %>% # took out `User: Feature`
+  dplyr::distinct() 
+
+upset_data_informed2 <- upset_data_informed2 %>%
+  dplyr::mutate(`Trellis staff` = ifelse(`Trellis staff` != "", 1, 0)) %>% 
+  dplyr::mutate(`Trellis Digest` = ifelse(`Trellis Digest` != "", 1, 0)) %>% 
+  dplyr::mutate(`In-app Notifications (Whatfix)` = ifelse(`In-App Notifications (through Whatfix)` != "", 1, 0)) %>% 
+  dplyr::mutate(`Other members of my team` = ifelse(`Other members of my team` != "", 1, 0)) %>%
+  dplyr::mutate(`Release Notes` = ifelse(`Release Notes` != "", 1, 0)) %>% 
+  dplyr::mutate(`Watch Trellis Grow` = ifelse(`Watch Trellis Grow Demos` != "", 1, 0)) %>% 
+  dplyr::mutate(`I do not feel up to date` = ifelse(`I do not feel up to date` != "", 1, 0))
+
+
+grouped_features_updates <- upset_data_informed2 %>% 
+  left_join(Features_pct_data)
+
+# Rename old names
+grouped_features_updates <- grouped_features_updates %>%
+  select(-`In-App Notifications (through Whatfix)`, -`Watch Trellis Grow Demos`)
+
+
+```
+
+## Table 2 -  Users by Period
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+#| label: table for period
+# Make a table based on Period
+Period_table <- df2 %>% 
+  # Fall_Survey2023_Oct19a %>% 
+  select(`ResponseId_Response ID`, Period) %>% 
+  distinct() %>% 
+  group_by(Period) %>%
+  dplyr::summarize(count = n()) %>%  # count records
+  dplyr::mutate(rel.freq =  scales::percent(count/sum(count), accuracy = 0.1))
+
+# Create formatted table 2
+Period_table %>%
+  arrange(desc(count)) %>%  # Sort by frequency descending
+  as.data.frame() %>%
+  kable("html",
+        col.names = c("Period", "Responses", "Percentage"),
+        align = c("l", "c", "c"),  # Left align text, center numbers
+        escape = FALSE,
+        caption = "Table 2: Period of Users") %>%
+  kable_paper(bootstrap_options = c("striped", "hover"),
+              full_width = FALSE,
+              font_size = 14) %>%
+  kable_styling(position = "center",
+                latex_options = c("HOLD_position")) %>%
+  column_spec(1, width = "15em", bold = TRUE) %>%
+  column_spec(2, width = "8em") %>%
+  column_spec(3, width = "8em") %>%
+  row_spec(0, bold = TRUE, color = "black", background = "#f8f9fa") %>%
+  footnote(
+    general = paste("Note: Based on", sum(Features_responseID_count), "total responses."),
+    general_title = "",
+    footnote_as_chunk = TRUE,
+    fixed_small_size = TRUE
+  )
+
+```
+
+```{r, echo=FALSE, warning=FALSE,results='hide', message=FALSE}
+#| label: refactor likert scales
+# Create logical levels for survey questions that were based on a likert scale
+df2 <-df2 %>% 
+  dplyr::mutate(dplyr::across(.cols=c(18:21, 38:44),
+                .fns = ~ factor(.x, 
+                                levels = c("Strongly disagree", "Somewhat disagree", 
+                                           "Neither agree nor disagree", 
+                                           "Somewhat agree", "Strongly agree"),
+                                ordered = TRUE)))
+
+```
+
+# Likert Questions Visuals
+
+Rate your Ongoing Training and Interactions with the Trellis team
+
+## Fig. 2 - Support and Adoption of Trellis
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+#| label: plot likert 2.1
+
+# Q 2.1
+df2 <- as.data.frame(df2)
+
+distinct_count_q2 <- df2 %>%
+  select(`ResponseId_Response ID`, 18:21) %>%      
+  distinct() %>% # Select columns 
+  summarise(distinct_responses = sum(rowSums(!is.na(.)) > 0)) %>%   # Count distinct rows
+  pull(distinct_responses)
+
+
+q2_plot <- plot(likert(df2[,18:21]), ordered = FALSE,) +
+  theme(legend.position = "bottom") +     # Move the legend to the right
+  guides(fill = guide_legend(ncol = 2))
+
+# distinct_count_q2
+
+q2_plot <- q2_plot + labs(title = "Support and Adoption of Trellis",
+                          subtitle = paste("n = ", distinct_count_q2) )
+
+print(q2_plot)
+
+
+```
+
+## Fig. 3 - Ongoing support for Trellis
+```{r, echo=FALSE, warning=FALSE}
+#| label: plot for q2.4
+# Plot for q2.4 
+q2_4plot <- plot(likert(df2[,38:40]), 
+                 ordered = FALSE,
+                 wrap= 40,
+                 # auto.key=list(columns = 2)
+                 ) +
+  theme(legend.position = "bottom") +     # Move the legend to the right
+  guides(fill = guide_legend(ncol = 2))
+# this looks good. but add more to it. 
+# 
+# distinct_count_q2_4 <- df2 %>%
+#   select(38:40) %>%                   # Select columns 38 to 40
+#   filter(complete.cases(.)) %>%       # Keep rows where none of the selected columns are NA
+#   summarise(distinct_responses = n_distinct(.)) %>%   # Count distinct rows
+#   pull(distinct_responses)
+
+distinct_count_q2_4 <- df2 %>%
+  select(`ResponseId_Response ID`, 38:40) %>%     
+  distinct() %>% # Select columns 
+  summarise(distinct_responses = sum(rowSums(!is.na(.)) > 0)) %>%   # Count distinct rows
+  pull(distinct_responses)
+
+
+# distinct_count_q2_4
+
+q2_4plot <- q2_4plot + labs(title = "Supported using Trellis",
+                            subtitle = paste("n = ", distinct_count_q2_4)) 
+
+print(q2_4plot) # dimension 980 by 300
+```
+
+## Fig. 4 - Ease of Using Trellis
+```{r, echo=FALSE, warning=FALSE}
+#| label: plot for q3.2
+q3_2plot <- plot(likert(df2[,41:42]), ordered = TRUE, wrap= 40,)  +
+  theme(legend.position = "bottom") +     # Move the legend to the right
+  guides(fill = guide_legend(ncol = 2)) 
+
+
+distinct_count_q3_2 <- df2 %>%
+  select(`ResponseId_Response ID`,41:42) %>%                   # Select columns 38 to 40
+  filter(complete.cases(.)) %>%       # Keep rows where none of the selected columns are NA
+  summarise(distinct_responses = n_distinct(.)) %>%   # Count distinct rows
+  pull(distinct_responses)
+
+
+q3_2plot <- q3_2plot + labs(title = "Ease of Using Trellis",
+                            subtitle = paste("n = ", distinct_count_q3_2) )
+
+print(q3_2plot)
+
+
+```
+
+## Fig. 5 - Recommending Trellis to Others
+```{r, echo=FALSE, warning=FALSE}
+#| label: plot for q4.2
+# q4.2
+q4_2plot <- plot(likert(df2[, 43:44]), ordered = TRUE, wrap= 40) +
+  theme(legend.position = "bottom") +     # Move the legend to the right
+  guides(fill = guide_legend(ncol = 2)) 
+
+distinct_count_q4_2 <- df2 %>%
+  select(`ResponseId_Response ID`,43:44) %>%                   # Select columns 38 to 40
+  filter(complete.cases(.)) %>%       # Keep rows where none of the selected columns are NA
+  summarise(distinct_responses = n_distinct(.)) %>%   # Count distinct rows
+  pull(distinct_responses)
+
+q4_2plot <- q4_2plot + labs(title = "Recommending Trellis to Others",
+                            subtitle = paste("n = ", distinct_count_q4_2)) 
+
+print(q4_2plot)
+```
+
+```{r, echo=FALSE,results='hide',fig.keep='all'}
+# multiselect question
+#| label: table for MultiSelect help with Trellis
+Q2_3 <- df2 %>%
+  pivot_longer(cols = c(
+    "Technical issue form/ Submitting a support ticket",                        
+    "Trellis training workshops",                       
+    "On-Screen guided help (Whatfix)",                      
+    "Asking my peers",                     
+    "Trellis teams (MS Teams)",                    
+    "Events ChatBot (Trellis MS Teams)",                   
+    "Ask Trellis team members directly",                  
+    "Team Member Name",                 
+    "None of these"
+  ),
+  names_to = "tools",
+  values_to = "response",
+  values_drop_na = TRUE) %>%
+  distinct() %>%
+  mutate(response = na_if(response, "")) %>% 
+  filter(!is.na(response)) %>% 
+  dplyr::mutate(response = dplyr::recode(response,
+     "Ask Trellis team members directly. Please share who you most often contact below." = 'Ask Trellis team members'))
+
+
+```
+
+## Table 3 - How do you get help on Trellis products?
+
+Please consider your ongoing experiences with Trellis support and resources. What-fix users and how they get help with Trellis
+
+```{r, echo=FALSE, warning=FALSE}
+#| label: table for help on Trellis
+
+# The respondents are allowed to select multiple responses. So count up who selected something for the question
+Q2_3_responseID_count <- Q2_3 %>%
+  select(response, `ResponseId_Response ID`) %>%
+  distinct() %>%  # Ensure unique rows based on both columns
+  group_by(`ResponseId_Response ID`) %>%
+  summarise(distinct_responses = n_distinct(`ResponseId_Response ID`)) %>%  # Count distinct responses per Response ID
+  pull(distinct_responses)
+
+# isolate the responses to create a table
+Q2_3_subset <- Q2_3 %>%
+  filter(response %in% c(
+    "Asking my peers ",      
+    "Technical issue form/ Submitting a support ticket",                        
+    "Trellis training workshops",                       
+    "On-Screen guided help (Whatfix)",                      
+    "Trellis teams (MS Teams)",                    
+    "Events ChatBot (Trellis MS Teams)",                   
+    "Ask Trellis team members",                  
+    "Team Member Name",                 
+    "None of these"))
+
+# Create a table to calculate percentages
+Q2_3_pct_subset  <- Q2_3_subset %>%
+  select(response, `ResponseId_Response ID`) %>% 
+  distinct() %>% 
+  group_by(response) %>%
+  dplyr::summarize(count = n()) %>%  
+  dplyr::mutate(pct = scales::percent(count / sum(count), accuracy = 0.1)) %>%
+  filter(!is.na(response))
+
+# print(Q2_3_pct_subset)
+
+# Create formatted table 3
+Q2_3_pct_subset %>%
+  arrange(desc(count)) %>%  # Sort by frequency descending
+  as.data.frame() %>%
+  kable("html",
+        col.names = c("Responses", "Count", "Percentage"),
+        align = c("l", "c", "c"),  # Left align text, center numbers
+        escape = FALSE,
+        caption = "Table 3: How do you get help on Trellis products?") %>%
+  kable_paper(bootstrap_options = c("striped", "hover"),
+              full_width = FALSE,
+              font_size = 14) %>%
+  kable_styling(position = "center",
+                latex_options = c("HOLD_position")) %>%
+  column_spec(1, width = "15em", bold = TRUE) %>%
+  column_spec(2, width = "8em") %>%
+  column_spec(3, width = "8em") %>%
+  row_spec(0, bold = TRUE, color = "black", background = "#f8f9fa") %>%
+  footnote(
+    general = paste("Note: Based on", sum(Q2_3_responseID_count), "total responses."),
+    general_title = "",
+    footnote_as_chunk = TRUE,
+    fixed_small_size = TRUE
+  )
+
+
+```
+
+## Fig. 6 - How do you get help using Trellis?
+```{r, echo=FALSE, warning=FALSE}
+#| label: bar graph on how to get help with Trellis
+
+q8_plota <- Q2_3_pct_subset %>%
+  dplyr::mutate(pct = count / sum(count)) %>%
+  ggplot(aes(x = reorder(response, -count), y = count, fill = "response")) +
+  # geom_bar(stat = "identity", fill = "response") +
+  geom_bar(stat = "identity", width = 0.9) +
+  xlab("") +
+  ylab("Count") +
+  geom_text(aes(label = paste0(round(pct * 100), '%')),
+            colour = "white",
+            position = position_stack(vjust = 0.5),
+            size = 3) +  # Adjusted label size
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),  # Rotate x-axis labels
+    axis.text = element_text(size = 8),  # Adjust font size for better readability
+    plot.title = element_text(hjust = 0.5),  # Center the title
+    legend.position = "none",  # Remove legend
+    plot.margin = unit(c(0, 5, 1, 1), "cm")  # Add margin for the title
+  ) +
+  labs(title = "How do you get help using Trellis?",
+       subtitle = paste("n = ", sum(Q2_3_responseID_count) ))
+
+print(q8_plota)
+
+
+```
+
+Asking my peers remains to be the most popular way for our users to get help with Trellis products.
+
+## Fig. 7 - Getting help with Trellis products by Period
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+#| label: Plot on help and period
+
+# Create a table to calculate percentages
+Q2_3_Period_pct <- Q2_3_subset %>%
+  select(response, `ResponseId_Response ID`, Period) %>% 
+  distinct() %>% 
+  group_by(response, Period) %>%
+  dplyr::summarize(count = n()) %>%  
+  dplyr::mutate(pct = scales::percent(count / sum(count), accuracy = 1)) %>%
+  filter(!is.na(response))
+
+
+# Create a bar plot with ggplot
+ggplot(Q2_3_Period_pct, aes(x = reorder(response, -count), y = count, fill = Period)) +
+  geom_bar(stat = "identity", position = "dodge") +  # Use dodge to separate periods
+  geom_text(aes(label = pct), vjust = -0.5, color = "black", size = 2.5, position = position_dodge(width = 1)) +  # Add percentages on top of bars
+  labs(
+    title = "How do you get help on Trellis products?",
+    subtitle = paste("Based on when staff members started using Trellis, n = ", sum(Q2_3_responseID_count)),
+    x = "",
+    y = ""
+  ) +
+  ylim(0, max(Q2_3_Period_pct$count) * 1.2) +  # Adjust y-axis limit to give space for labels
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+                plot.margin = unit(c(0, 0.5, 1, 1.5), "cm") )  # Rotate x-axis labels for readability
+
+
+```
+
+## Fig. 8 - Getting help with Trellis products by Whatfix Users
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+#| label: Plot on help and whatfix
+# multiselect question
+# Create a table to calculate percentages
+
+Q2_3_Whatfix_pct <- Q2_3_subset %>%
+  select(response, `ResponseId_Response ID`, WhatFix_user) %>% 
+  distinct() %>% 
+  group_by(response, WhatFix_user) %>%
+  dplyr::summarize(count = n()) %>%  
+  dplyr::mutate(
+    WhatFix_user = dplyr::recode(WhatFix_user, `1` = "Whatfix", .missing = "Basic"),  # Recoding
+    pct = scales::percent(count / sum(count), accuracy = 1)) %>% 
+  filter(!is.na(response))
+
+# Create a bar plot with ggplot
+ggplot(Q2_3_Whatfix_pct, aes(x = reorder(response, -count), y = count, fill = WhatFix_user)) +
+  geom_bar(stat = "identity", position = "dodge") +  # Use dodge to separate periods
+  # geom_text(aes(label = paste0(count, " (", pct, ")")), 
+  geom_text(aes(label = paste0( pct)),
+            vjust = -0.5, color = "black", size = 2.5, 
+            position = position_dodge(width = 1)) +  # Add both count and percentages
+  labs(
+    title = "How do you get help on Trellis products?",
+        subtitle = paste("n = ", sum(Q2_3_responseID_count)),
+    x = "",
+    y = "",
+    fill = "User Type"  # Change legend title
+  ) +
+  ylim(0, max(Q2_3_Whatfix_pct$count) * 1.2) +  # Adjust y-axis limit to give space for labels
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+            plot.margin = unit(c(0, 0.5, 1, 1.5), "cm")  # Add margin for the title
+
+        )  # Rotate x-axis labels for readability
+
+```
+
+```{r, echo=FALSE, warning=FALSE}
+#| label: Team member names
+#| 
+# take on the column with names to analyze who best supported out team
+# variable Team Member Name
+team_member_name <- df2 %>% 
+  select(`ResponseId_Response ID`, `Team Member Name`) %>% 
+  group_by(`Team Member Name`) %>% 
+  distinct()
+
+```
+
+# Responses to "How do you get help?" Upset Plots
+```{r, echo=FALSE, warning=FALSE}
+#| label: Upset plot with how you get help with Trellis
+# upset plot
+library(ComplexUpset)
+
+upset_data_Q8 <- df2 %>% 
+  dplyr::select(`ResponseId_Response ID`,
+                    `Technical issue form/ Submitting a support ticket`,                        
+    `Trellis training workshops`,                                               
+    `On-Screen guided help (Whatfix)`,                                          
+    `Asking my peers`,                                                          
+    `Trellis teams (MS Teams)`,                                                 
+    `Events ChatBot (Trellis MS Teams)`,                                        
+    `Ask Trellis team members directly`,                                        
+    # "Team Member Name",                                                         
+    `None of these`, 
+                Period, WhatFix_user) %>% # took out `User: Feature`
+  dplyr::distinct() 
+
+upset_data_Q8 <- upset_data_Q8 %>% 
+  # dplyr::select(-`ResponseId-Response ID`) %>% 
+  data.frame() %>%
+  # t() %>% # transpose the result, ugh
+  as_tibble()
+
+
+upset_data_Q8b <- upset_data_Q8 %>%
+  dplyr::mutate(`Technical form` = ifelse(Technical.issue.form..Submitting.a.support.ticket != "", 1, 0)) %>% 
+  dplyr::mutate(`Trellis training` = ifelse(Trellis.training.workshops != "", 1, 0)) %>% 
+  dplyr::mutate(`On-Screen guide (Whatfix)` = ifelse(On.Screen.guided.help..Whatfix. != "", 1, 0)) %>% 
+  dplyr::mutate(`Ask a peer` = ifelse(Asking.my.peers != "", 1, 0)) %>% 
+  dplyr::mutate(`MS Teams` = ifelse(Trellis.teams..MS.Teams. != "", 1, 0)) %>% 
+  dplyr::mutate(`Events Chatbot` = ifelse(Events.ChatBot..Trellis.MS.Teams. != "", 1, 0)) %>% 
+  dplyr::mutate(`Trellis team member` = ifelse(Ask.Trellis.team.members.directly != "", 1, 0)) %>% 
+  dplyr::mutate(`None of these` = ifelse(None.of.these != "", 1, 0))
+
+```
+
+## Fig. 9 -  Upset Plot of Help Resources with Period
+
+```{r, echo=FALSE,results='hide',fig.keep='all'}
+#| label: hex code 3
+# get color hex code
+brewer.pal(3, "Set2") #"#66C2A5" "#FC8D62" "#8DA0CB"
+
+```
+
+```{r, echo=FALSE, warning=FALSE}
+#| label: Upset Plot on Help and period
+## ComplexUpset tutorial
+# https://github.com/krassowski/complex-upset/issues/154
+upset_data_Q8b <- as.data.frame(upset_data_Q8b)
+
+set_vars8 = colnames(upset_data_Q8b)[12:19] # Variables selected for analysis
+
+Q8_upset_plot <- ComplexUpset::upset(
+  data = upset_data_Q8b,  
+  intersect = set_vars8,
+  # matrix = (intersection_matrix()
+  #           + annotate('text', size=2, fontface='bold')),
+  set_sizes = FALSE,
+  name = "",
+  min_size = 3,
+  min_degree = 1,
+   base_annotations=list('Intersection size'=intersection_size(counts=FALSE)),
+  themes = upset_modify_themes(
+        list('intersections_matrix'=theme(text=element_text(size=7)),
+          'intersections_matrix'=theme(axis.text.y=element_text(size=7)))
+    ), 
+  annotations = list(
+    'Initiation Period' = (
+      ggplot(mapping = aes(fill = Period))
+      + geom_bar(stat = 'count', position = 'fill', width = 0.8)
+      + scale_y_continuous(labels=scales::percent_format())
+      + scale_fill_manual(values=c('This semester'='#66C2A5', 
+                                   'Last semester'='#FC8D62',
+                                   'More than two semesters'='#8DA0CB'
+                                   )) 
+      + labs(
+          title = "How do you get help on Trellis products?",
+          subtitle = paste("Based on when staff members started using Trellis. n =", sum(Q2_3_responseID_count)),
+          x = "",
+          y = "",
+          fill = "Period"
+      )
+    )
+  ),
+  width_ratio = 0.1  
+) + 
+theme(panel.spacing = unit(1, "lines"))  # Properly closed theme
+
+Q8_upset_plot
+
+```
+
+```{r, echo=FALSE, warning=FALSE}
+# Save the plot as a PNG file
+ggsave(
+  filename = "Q8_upset_plot.png", # File name and format
+  plot = Q8_upset_plot,           # The plot object
+  width = 10,                     # Width in inches
+  height = 8,                     # Height in inches
+  dpi = 300                       # Resolution in dots per inch
+)
+
+```
+
+
+## Fig. 10 - Upset Plot of Help Resources with Whatfix
+```{r, echo=FALSE, warning=FALSE}
+#| label: Upset Plot on help and whatfix
+
+# Turn whatfix users into binary variable with new names
+upset_data_Q8b <- upset_data_Q8b %>% 
+  dplyr::mutate(
+    WhatFix_user = dplyr::recode(WhatFix_user, `1` = "Whatfix", .missing = "Basic"))
+
+# variables to include in the upset plot
+set_vars8 = colnames(upset_data_Q8b)[12:19]
+
+# plotting the upset plot
+Q8_upset_plot_wf <- ComplexUpset::upset(
+  data = upset_data_Q8b,   
+  intersect = set_vars8,
+  set_sizes = FALSE,
+  name = "",
+  min_size = 4,
+  min_degree = 1,
+    base_annotations=list('Intersection size'=intersection_size(counts=FALSE)),
+  # themes = upset_themes, 
+    themes = upset_modify_themes(
+        list('intersections_matrix'=theme(text=element_text(size=7)),
+          'intersections_matrix'=theme(axis.text.y=element_text(size=7)))
+    ), 
+  annotations = list(
+    'Initiation Period' = (
+      ggplot(mapping = aes(fill = WhatFix_user))
+      + geom_bar(stat = 'count', position = 'fill', width = 0.8)
+      + scale_y_continuous(labels = scales::percent_format())
+      + labs(
+          title = "How do you get help on Trellis products?",
+          subtitle = paste("Based on whether they use What-fix. n =", sum(Q2_3_responseID_count) ),
+          x = "",
+          y = "",
+          fill = "User Type"
+      )
+    )
+  ),
+  width_ratio = 0.1  # Correctly placed here
+) + 
+theme(panel.spacing = unit(1, "lines"))  # Properly closed theme
+
+print(Q8_upset_plot_wf)
+
+```
+
+```{r, echo=FALSE, warning=FALSE}
+# Save the plot as a PNG file
+ggsave(
+  filename = "Q8_upset_plot_wf.png", # File name and format
+  plot = Q8_upset_plot_wf,           # The plot object
+  width = 10,                     # Width in inches
+  height = 8,                     # Height in inches
+  dpi = 300                       # Resolution in dots per inch
+)
+
+```
+# Analysis for how do you keep abreast of Trellis news
+
+## Table 4 - How do you get Trellis updates?
+```{r, echo=FALSE, warning=FALSE}
+#| label: Table on staying informed
+Q_informed <- df2 %>%
+  pivot_longer(cols = c(
+   "Trellis Digest",
+   "In-App Notifications (through Whatfix)",
+   "Release Notes", 
+   "Watch Trellis Grow Demos", 
+   "Other members of my team", 
+   "Trellis staff", 
+   "I do not feel up to date"
+  ),
+  names_to = "tools",
+  values_to = "response",
+  values_drop_na = TRUE) %>%
+  distinct() %>%
+  mutate(response = na_if(response, "")) %>% 
+  filter(!is.na(response)) 
+
+# Q_informed$response <- trimws(Q_informed$response)
+
+Q_informed_subset <- Q_informed %>%
+  filter(response %in% c(
+    "Trellis Digest",
+    "In-App Notifications (through Whatfix)",
+    "Release Notes", 
+    "Watch Trellis Grow Demos (previously Sprint Demos)", 
+    "Other members of my team inform me of changes", 
+    "Trellis staff", 
+    "I do not feel up to date about new Trellis releases."
+  ))  
+
+# Change how the names appears in the table
+Q_informed_subset <- Q_informed_subset %>% 
+  mutate(response = case_when(
+    response == "Trellis staff" ~ "Trellis Staff",
+    response == "In-App Notifications (through Whatfix)" ~ "Whatfix In-App Notifications",
+    response == "Other members of my team inform me of changes" ~ "Other members of my team",
+    response == "Watch Trellis Grow Demos (previously Sprint Demos)" ~ "Watch Trellis Grow Demos",
+    response == "I do not feel up to date about new Trellis releases." ~ "I do not feel up to date",
+    TRUE ~ response  # Keep the original response for all other cases
+  ))
+
+# table(Q_informed_subset$response)
+
+# distinct counts of those who answered for the how I get updates on trellis resources
+Q_informed_responseID_count <- Q_informed_subset %>%
+  select(response, `ResponseId_Response ID`) %>%
+  distinct() %>%  # Ensure unique rows based on both columns
+  group_by(`ResponseId_Response ID`) %>%
+  summarise(distinct_responses = n_distinct(`ResponseId_Response ID`)) %>%  # Count distinct responses per Response ID
+  pull(distinct_responses)
+
+Q_informed_pct_subset  <- Q_informed_subset %>%
+  select(response, `ResponseId_Response ID`) %>% 
+  distinct() %>% 
+  group_by(response) %>%
+  dplyr::summarize(count = n()) %>%  
+  dplyr::mutate(pct = scales::percent(count / sum(count), accuracy = 0.1)) %>%
+  filter(!is.na(response))
+
+# Create formatted table 4
+Q_informed_pct_subset %>%
+  arrange(desc(count)) %>%  # Sort by frequency descending
+  as.data.frame() %>%
+  kable("html",
+        col.names = c("Communication Channel", "Responses", "Percentage"),
+        align = c("l", "c", "c"),  # Left align text, center numbers
+        escape = FALSE,
+        caption = "Table 4: How Users Receive Trellis Updates") %>%
+  kable_paper(bootstrap_options = c("striped", "hover"),
+              full_width = FALSE,
+              font_size = 14) %>%
+  kable_styling(position = "center",
+                latex_options = c("HOLD_position")) %>%
+  column_spec(1, width = "15em", bold = TRUE) %>%
+  column_spec(2, width = "8em") %>%
+  column_spec(3, width = "8em") %>%
+  row_spec(0, bold = TRUE, color = "black", background = "#f8f9fa") %>%
+  footnote(
+    general = paste("Note: Based on", sum(Q_informed_responseID_count), "total responses."),
+    general_title = "",
+    footnote_as_chunk = TRUE,
+    fixed_small_size = TRUE
+  )
+```
+
+```{r, echo=FALSE, warning=FALSE}
+#| label: Bar graph on staying informed
+
+#### How do you get Trellis updates?
+q10_plota <- Q_informed_pct_subset %>%
+  dplyr::mutate(pct = count / sum(count)) %>%
+  ggplot(aes(x = reorder(response, -count), y = count, fill = "response")) +
+  # geom_bar(stat = "identity", fill = "response") +
+  geom_bar(stat = "identity", width = 0.9) +
+  xlab("") +
+  ylab("Count") +
+  geom_text(aes(label = paste0(round(pct * 100), '%')),
+            colour = "white",
+            position = position_stack(vjust = 0.5),
+            size = 3) +  # Adjusted label size
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),  # Rotate x-axis labels
+    axis.text = element_text(size = 8),  # Adjust font size for better readability
+    plot.title = element_text(hjust = 0.5),  # Center the title
+    legend.position = "none",  # Remove legend
+    plot.margin = unit(c(0, 5, 1, 1), "cm")  # Add margin for the title
+  ) +
+  labs(title = "How do you stay informed?",
+       subtitle = paste("Multi-select Question. n = ", (sum(Q_informed_responseID_count))))
+
+print(q10_plota)
+```
+
+## Fig. 11 - Staying informed by Period
+
+```{r, echo=FALSE,results='hide', warning=FALSE, message=FALSE}
+#| label: Pct on staying informed
+
+# Create a table to calculate percentages
+Q_informed_Period_pct <- Q_informed_subset %>%
+  select(response, `ResponseId_Response ID`, Period) %>% 
+  distinct() %>%
+  dplyr::group_by(response, Period) %>%
+  dplyr::summarize(count = n()) %>% 
+  dplyr::mutate(pct = scales::percent(count / sum(count), accuracy = 1)) %>%
+  filter(!is.na(response))
+
+```
+
+```{r, echo=FALSE, warning=FALSE}
+#| label: bar chart on staying informed
+# How do you get help with Trellis products with the breakdown of period.
+
+# Create a bar plot with ggplot
+ggplot(Q_informed_Period_pct, aes(x = reorder(response, -count), y = count, fill = Period)) +
+  geom_bar(stat = "identity", position = "dodge") +  # Use dodge to separate periods
+  geom_text(aes(label = pct), vjust = -0.5, color = "black", size = 2.5, position = position_dodge(width = 1)) +  # Add percentages on top of bars
+  labs(
+    title = "How do you get help on Trellis products?",
+    subtitle = paste("Based on when staff memberst started using Trellis. n = ", (sum(Q_informed_responseID_count))),
+    x = "",
+    y = ""
+  ) +
+  ylim(0, max(Q_informed_Period_pct$count) * 1.2) +  # Adjust y-axis limit to give space for labels
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+                plot.margin = unit(c(0, 0.5, 1, 1.5), "cm") )  # Rotate x-axis labels for readability
+```
+
+## Fig. 12 - Staying informed by Whatfix
+
+```{r, echo=FALSE,results='hide',fig.keep='all', message=FALSE}
+#| label: pct on staying informed plus whatfix 
+
+# create percentage for respondents stay informed
+Q_informed_Whatfix_pct <- Q_informed_subset %>%
+  select(response, `ResponseId_Response ID`, WhatFix_user) %>% 
+  distinct() %>% 
+  group_by(response, WhatFix_user) %>%
+  dplyr::summarize(count = n()) %>%  
+  dplyr::mutate(
+    WhatFix_user = dplyr::recode(WhatFix_user, `1` = "Whatfix", .missing = "Basic"),  # Recoding
+    pct = scales::percent(count / sum(count), accuracy = 1)) %>% 
+  filter(!is.na(response))
+
+```
+
+```{r, echo=FALSE, warning=FALSE}
+# Create a bar plot with ggplot
+#| label: bar chart on staying informed with wahtfix 
+ggplot(Q_informed_Whatfix_pct, aes(x = reorder(response, -count), y = count, fill = WhatFix_user)) +
+  geom_bar(stat = "identity", position = "dodge") +  # Use dodge to separate periods
+  # geom_text(aes(label = paste0(count, " (", pct, ")")), 
+  geom_text(aes(label = paste0( pct)),
+            vjust = -0.5, color = "black", size = 2.5, 
+            position = position_dodge(width = 1)) +  # Add both count and percentages
+  labs(
+    title = "How do you get Trellis updates?",
+        subtitle = paste("n = ", (sum(Q_informed_responseID_count))),
+    x = "",
+    y = "",
+    fill = "User Type"  # Change legend title
+  ) +
+  ylim(0, max(Q_informed_Whatfix_pct$count) * 1.2) +  # Adjust y-axis limit to give space for labels
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+            plot.margin = unit(c(0, 0.5, 1, 1.5), "cm")  # Add margin for the title
+        )  # Rotate x-axis labels for readability
+
+```
+
+## Fig. 13 - Upset Plot for Staying Informed
+
+```{r, echo=FALSE, warning=FALSE}
+#| label: Upset Plot with informed
+
+upset_data_Q_informed <- df2 %>% 
+  dplyr::select(`ResponseId_Response ID`,
+        `Trellis staff`,                        
+    `Trellis Digest`,              
+    `In-App Notifications (through Whatfix)`,
+    `Release Notes`, 
+    `Watch Trellis Grow Demos`, 
+    `Other members of my team`, 
+    `I do not feel up to date`,
+                Period, WhatFix_user) %>% # took out `User: Feature`
+  dplyr::distinct() 
+
+
+upset_data_informed <- upset_data_Q_informed %>% 
+  # dplyr::select(-`ResponseId-Response ID`) %>% 
+  data.frame() %>%
+  # t() %>% # transpose the result, ugh
+  as_tibble()
+
+
+upset_data_informed2 <- upset_data_informed %>%
+  dplyr::mutate(`Trellis staff` = ifelse(Trellis.staff != "", 1, 0)) %>% 
+  dplyr::mutate(`Trellis Digest` = ifelse(Trellis.Digest != "", 1, 0)) %>% 
+  dplyr::mutate(`In-app Notifications (Whatfix)` = ifelse(In.App.Notifications..through.Whatfix. != "", 1, 0)) %>% 
+  dplyr::mutate(`Other members of my team` = ifelse(Other.members.of.my.team != "", 1, 0)) %>% 
+  dplyr::mutate(`Release Notes` = ifelse(Release.Notes != "", 1, 0)) %>% 
+  dplyr::mutate(`Watch Trellis Grow` = ifelse(Watch.Trellis.Grow.Demos != "", 1, 0)) %>% 
+  dplyr::mutate(`I do not feel up to date` = ifelse(I.do.not.feel.up.to.date != "", 1, 0))
+
+
+
+```
+
+## Fig. 14 - Upset Plot with Period
+
+```{r, echo=FALSE,results='hide', warning=FALSE}
+#| label: color palette for period
+# get color hex code
+brewer.pal(3, "Set2") #"#66C2A5" "#FC8D62" "#8DA0CB"
+```
+
+```{r, echo=FALSE, warning=FALSE}
+#| label: Upset Plot with informed data prep
+#| 
+# Step 1: Select and pivot data
+
+upset_data_Q_informed <- df2 %>% 
+  dplyr::select(`ResponseId_Response ID`,Period, WhatFix_user,
+        `Trellis staff`,                        
+    `Trellis Digest`,              
+    `In-App Notifications (through Whatfix)`,
+    `Release Notes`, 
+    `Watch Trellis Grow Demos`, 
+    `Other members of my team`, 
+    `I do not feel up to date`) %>% 
+  dplyr::distinct() 
+
+
+upset_data_informed <- upset_data_Q_informed %>% 
+  # dplyr::select(-`ResponseId-Response ID`) %>% 
+  data.frame() %>%
+  # t() %>% # transpose the result, ugh
+  as_tibble()
+
+
+upset_data_informed2 <- upset_data_informed %>%
+  dplyr::mutate(`Trellis staff` = ifelse(Trellis.staff != "", 1, 0)) %>% 
+  dplyr::mutate(`Trellis Digest` = ifelse(Trellis.Digest != "", 1, 0)) %>% 
+  dplyr::mutate(`In-app Notifications (Whatfix)` = ifelse(In.App.Notifications..through.Whatfix. != "", 1, 0)) %>% 
+  dplyr::mutate(`Other members of my team` = ifelse(Other.members.of.my.team != "", 1, 0)) %>%
+  dplyr::mutate(`Release Notes` = ifelse(Release.Notes != "", 1, 0)) %>% 
+  dplyr::mutate(`Watch Trellis Grow` = ifelse(Watch.Trellis.Grow.Demos != "", 1, 0)) %>% 
+  dplyr::mutate(`I do not feel up to date` = ifelse(I.do.not.feel.up.to.date != "", 1, 0))
+```
+
+```{r, echo=FALSE, warning=FALSE}
+#| label: Upset Plot with informed with Period
+
+
+# Subset just the question upset plot
+upset_data_informed2 <- as.data.frame(upset_data_informed2)
+
+set_vars7 = colnames(upset_data_informed2)[11:17] # Select the columns used for the visual
+
+upset_data_informed2_plot <- ComplexUpset::upset(
+  data = upset_data_informed2,  
+  intersect = set_vars7,
+  set_sizes = FALSE,
+  name = "",
+  min_size = 3,
+  min_degree = 1,
+      base_annotations=list('Intersection size'=intersection_size(counts=FALSE)),
+  # themes = upset_themes, 
+    themes = upset_modify_themes(
+        list('intersections_matrix'=theme(text=element_text(size=7)),
+          'intersections_matrix'=theme(axis.text.y=element_text(size=7)))
+    ), 
+  annotations = list(
+    'Initiation Period' = (
+      ggplot(mapping = aes(fill = Period)) +
+        geom_bar(stat = 'count', position = 'fill', width = 0.8) +
+        scale_y_continuous(labels = scales::percent_format()) +
+        scale_fill_manual(values = c(
+          'This semester' = '#66C2A5',
+          'Last semester' = '#FC8D62',
+          'More than two semesters' = '#8DA0CB'
+        )) +
+        labs(
+          title = "How do you get Trellis updates?",
+          subtitle = paste("n = ", sum(Q_informed_responseID_count))
+        )
+    )
+  ),
+  width_ratio = 0.1
+) + 
+theme(panel.spacing = unit(1, "lines"))
+
+upset_data_informed2_plot
+```
+
+## Fig. 15 - Upset Plot for Getting Updates with Whatfix
+
+```{r, echo=FALSE,results='hide', warning=FALSE}
+#| label: hex code for whatfix
+# get color hex code
+brewer.pal(3, "Set2") #"#66C2A5" "#FC8D62" "#8DA0CB"
+```
+
+## Fig. 16 - Upset Plot with Grouped Features
+
+```{r, echo=FALSE, warning=FALSE}
+# Step 1: Set variables for upset plot
+
+grouped_features_updates <- grouped_features_updates %>% 
+  relocate(Period, .after = `ResponseId_Response ID`) %>% 
+  relocate(WhatFix_user, .after = `ResponseId_Response ID`) %>% 
+  relocate(Response, .after = `ResponseId_Response ID`) %>% 
+  relocate(Feature_Group, .after = `ResponseId_Response ID`)
+
+# Keep only the advising group and Events and Comm groups
+grouped_features_updates_subset <- grouped_features_updates %>% 
+  filter(Feature_Group == "Advising Group" | Feature_Group == "Events & Communications") %>% 
+  distinct()
+
+set_vars9 = colnames(grouped_features_updates_subset)[6:12] # Subset columns used to make the upset plot
+
+# Step 2: ComplexUpset plot
+upset_data_informed2_plot <- ComplexUpset::upset(
+  data = grouped_features_updates_subset,  
+  intersect = set_vars9,
+  set_sizes = FALSE,
+  name = "",
+  min_size = 3,
+  min_degree = 1,
+  base_annotations = list(
+    'Intersection size' = intersection_size(counts = FALSE)
+  ),
+  themes = upset_modify_themes(
+    list(
+      'intersections_matrix' = theme(text = element_text(size = 7))
+        # axis.text.y = element_text(size = 9))
+    )
+  ), 
+  annotations = list(
+    'Initiation Period' = ggplot(mapping = aes(fill = Feature_Group)) +
+      geom_bar(stat = 'count', position = 'fill', width = 0.8) +
+      scale_y_continuous(labels = scales::percent_format()) +
+       scale_fill_manual(values=c('Advising Group'='lightblue', 
+                                   'Events & Communications'='#FC8D62'
+                                   )) +
+      labs(
+        title = "How do you get help on Trellis products?",
+        subtitle = paste("n =", sum(Q2_3_responseID_count)),
+        x = "",
+        y = "",
+        fill = "Feature Group"
+      )
+  ),
+  width_ratio = 0.1
+)
+
+upset_data_informed2_plot
+```
+
+Adding variables to Features dataset
+
+### Fig. 17 - Features with Whatfix
+
+```{r, echo=FALSE, warning=FALSE}
+#| label: Upset plot with whatfix
+#| 
+Q_features_distinct <- upset_plot_Q15 %>%
+  select(`ResponseId_Response ID`, 2:16) %>%  # Select specified columns
+  distinct() %>%  # Ensure unique rows
+  summarize(count = n_distinct(`ResponseId_Response ID`)) 
+
+set_vars15 <- colnames(upset_plot_Q15)[26:29]
+
+upset_plot_Q15$`User Type` <- upset_plot_Q15$WhatFix_user
+
+Q15_upset_plot <- ComplexUpset::upset(
+  data = upset_plot_Q15,  
+  intersect = set_vars15,
+  set_sizes = FALSE,
+  name = "",
+  min_size = 3,
+  min_degree = 1,
+  themes = upset_themes, 
+  annotations = list(
+    'Initiation Period' = (
+      ggplot(mapping = aes(fill = `User Type`))
+      + geom_bar(stat = 'count', position = 'fill', width = 0.7)
+      + scale_y_continuous(labels = scales::percent_format())
+      + labs(title = "Features Accessed",
+             color = "User Type")
+      + theme(
+          axis.text.y = element_text(size = 8),  # Adjusted y-axis label size
+          # axis.text.x = element_text(size = 8),  # Adjust x-axis label size
+          plot.title = element_text(size = 10)   # Adjust the plot title size
+        )
+    )
+  ),
+  width_ratio = 1.5  # Correctly placed here
+)
+
+# Print the plot
+print(Q15_upset_plot)
+
+```
+
+### Fig. 18 - Features with Period
+
+```{r, echo=FALSE, warning=FALSE}
+#| label: upset plot with periods
+#| 
+### fancier upset plot for 15
+set_vars15 <- colnames(upset_plot_Q15)[26:29] # select the columns for analysis
+
+Q15_period_upset_plot <- ComplexUpset::upset(
+  data = upset_plot_Q15,  
+  intersect = set_vars15,
+  set_sizes = FALSE,
+  name = "",
+  min_size = 3,
+  min_degree = 1,
+  themes = upset_themes, 
+  annotations = list(
+    'Initiation Period' = (
+      ggplot(mapping = aes(fill = Period))
+      + geom_bar(stat = 'count', position = 'fill', width = 0.7)
+      + scale_y_continuous(labels = scales::percent_format())
+      + scale_fill_manual(values = c(
+          'This semester'='#66C2A5', 'Last semester'='#FC8D62', 'More than two semesters'='#8DA0CB'
+      ))
+      + labs(title = "Features Accessed",
+             color = "Period")
+      + theme(
+          axis.text.y = element_text(size = 8),  # Adjusted y-axis label size
+          # axis.text.x = element_text(size = 8),  # Adjust x-axis label size
+          plot.title = element_text(size = 10)   # Adjust the plot title size
+        )
+    )
+  ),
+  width_ratio = 1.5  # Correctly placed here
+)
+
+# Print the plot
+print(Q15_period_upset_plot)
+
+
+```
+
+# Optional UX Research Question
+## Fig. 19 - Rank Order Graph of 
+```{r, echo=FALSE, warning=FALSE}
+#| label: UX rank order question
+
+# optional UX research question
+
+rank_order_data <- df2 %>% 
+  filter(`Yes to participating in user experience research` == "Yes") %>% 
+  select(`ResponseId_Response ID`, `Ease of completing common tasks`, 
+         `Ability to share work with team members`, `Complete tasks as quickly as possible`, 
+         `Access more data in one place`) %>% 
+  distinct()
+
+count_rank_order_data <- rank_order_data %>% 
+  select(`ResponseId_Response ID`) %>% 
+  distinct() %>%  # Ensure unique rows based on both columns
+  group_by(`ResponseId_Response ID`) %>%
+  summarise(distinct_responses = n_distinct(`ResponseId_Response ID`)) %>%  # Count distinct responses per Response ID
+  pull(distinct_responses)
+
+# Calculate means
+Columns1 <- rank_order_data %>% select(c(2:5))
+
+Col1_tall <- Columns1 %>% gather(key = Feature, value = Rank, 
+                                  `Ease of completing common tasks`, 
+                                 `Ability to share work with team members`, 
+                                 `Complete tasks as quickly as possible`, 
+                                 `Access more data in one place`)
+
+colours <- c("darkblue","lightblue",  "gray70","red3", "red4")
+
+# Removing NA values in Rank column
+Col1_tall_filtered <- Col1_tall %>%
+  filter(!is.na(Rank)) %>% 
+  filter(Rank != "")
+
+# Create a ggplot
+ggplot(Col1_tall_filtered) +
+  aes(x = forcats::fct_rev(Feature), fill = Rank) +
+  geom_bar() +
+  coord_flip() +
+  scale_fill_manual(values = colours) +
+  xlab("") +
+  ylab("Position Levels") +
+  ggtitle("What is most important to you?", paste("n = ", sum(count_rank_order_data)) 
+
+)
+
+```
